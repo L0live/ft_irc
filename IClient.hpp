@@ -2,8 +2,6 @@
 # define ICLIENT_HPP
 
 #include "Channel.hpp"
-#include <iostream>
-#include <map>
 
 class IClient {
 private:
@@ -11,6 +9,8 @@ private:
 	std::string _nickname;
 	std::string _ip_adress;
 	std::map<std::string, Channel *>	_channels;
+
+	Channel	*_activeChannel;
 
 	IClient();
 public:
@@ -20,9 +20,11 @@ public:
 	virtual ~IClient();
 
 	void	sendChannelMsg(std::string &msg);
+	// void	sendChannelMsg(std::string &msg, std::string &channel);
+	// void	sendChannelMsg(std::string &msg, Channel *channel);
 	void	sendPrivateMsg(std::string &msg, std::string &target);
-	void	joinChannel(Channel *channel);
-	virtual void	leaveChannel(std::string &channel) = 0;
+	void	joinChannel(std::string &channel);
+	virtual void	leaveChannel() = 0;
 
 	void	setUsername(std::string &username);
 	void	setNickname(std::string &nickname);

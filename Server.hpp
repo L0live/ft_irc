@@ -1,10 +1,7 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-#include "Channel.hpp"
 #include "IClient.hpp"
-#include <iostream>
-#include <map>
 
 class Server {
 private:
