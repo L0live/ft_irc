@@ -2,6 +2,12 @@
 # define SERVER_HPP
 
 #include "IClient.hpp"
+#include "Channel.hpp"
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <cmath>
 
 class Server {
 private:

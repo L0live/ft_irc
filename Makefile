@@ -1,7 +1,7 @@
 NAME=ircserv
 CPP=c++
-FLAGS=-Wall -Wextra -Werror -std=c++98
-SRCS=main.cpp Server.cpp IClient.cpp User.cpp Operator.cpp Channel.cpp
+FLAGS=-Wall -Wextra -Werror -std=c++98 -g
+SRCS=main.cpp Server.cpp# IClient.cpp User.cpp Operator.cpp Channel.cpp
 OBJS=$(SRCS:.cpp=.o)
 HEADERS=Server.hpp IClient.hpp User.hpp Operator.hpp Channel.hpp
 

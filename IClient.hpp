@@ -1,7 +1,10 @@
 #ifndef ICLIENT_HPP
 # define ICLIENT_HPP
 
-#include "Channel.hpp"
+#include <iostream>
+#include <string>
+#include <map>
+class Channel;
 
 class IClient {
 private:

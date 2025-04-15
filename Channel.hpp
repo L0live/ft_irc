@@ -1,10 +1,11 @@
 #ifndef CHANNEL_HPP
 # define CHANNEL_HPP
 
-#include "User.hpp"
-#include "Operator.hpp"
-#include <iostream>
-#include <map>
+# include "User.hpp"
+# include "Operator.hpp"
+# include <iostream>
+# include <string>
+# include <map>
 
 class Channel {
 private:
@@ -27,7 +28,7 @@ public:
 	void	sendAllUser(std::string &user, std::string &msg);
 	// Operator
 	void    kickUser(std::string &user);
-	void	addUser(IClient *user);
+	void	addUser(User *user);
 	// TOPIC
 	void	setTopic(std::string &topic);
 	std::string	getTopic() const;

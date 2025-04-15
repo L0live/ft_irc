@@ -2,6 +2,7 @@
 # define OPERATOR_HPP
 
 #include "IClient.hpp"
+#include <string>
 
 class Operator : public IClient {
 public:
