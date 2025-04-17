@@ -1,11 +1,7 @@
 #ifndef CHANNEL_HPP
 # define CHANNEL_HPP
 
-# include "User.hpp"
 # include "Operator.hpp"
-# include <iostream>
-# include <string>
-# include <map>
 
 class Channel {
 private:

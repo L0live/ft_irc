@@ -1,10 +1,9 @@
 #ifndef OPERATOR_HPP
 # define OPERATOR_HPP
 
-#include "IClient.hpp"
-#include <string>
+#include "User.hpp"
 
-class Operator : public IClient {
+class Operator : public User {
 public:
     ~Operator();
 

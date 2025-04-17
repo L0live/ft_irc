@@ -1,9 +1,9 @@
 NAME=ircserv
 CPP=c++
 FLAGS=-Wall -Wextra -Werror -std=c++98 -g
-SRCS=main.cpp Server.cpp# IClient.cpp User.cpp Operator.cpp Channel.cpp
+SRCS=main.cpp Server.cpp# User.cpp Operator.cpp Channel.cpp
 OBJS=$(SRCS:.cpp=.o)
-HEADERS=Server.hpp IClient.hpp User.hpp Operator.hpp Channel.hpp
+HEADERS=Server.hpp User.hpp Operator.hpp Channel.hpp
 
 all: $(NAME)
 
