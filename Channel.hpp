@@ -1,16 +1,16 @@
 #ifndef CHANNEL_HPP
 # define CHANNEL_HPP
 
-# include "Operator.hpp"
+# include "ft_irc.hpp"
 
 class Channel {
 private:
-	const std::string _name;
+	std::string _name;
 	std::string _password;
 	std::string _topic;
 	//type  _restrictions; ???
-	std::map<std::string, User *> _users;
-	std::map<std::string, Operator *> _operators;
+	UserMap		_users;
+	OperatorMap	_operators;
 	long long   _userLimit;
 	bool        _byInvitation;
 
@@ -37,8 +37,7 @@ public:
 	void	removePassword();
 	void	giveOperatorStatus(std::string &user);
 	void	removeOperatorStatus(std::string &user);
-	void	setUserLimit(std::string &userLimit);
-	// void	setUserLimit(long long &userLimit);
+	void	setUserLimit(long long &userLimit);
 	void	removeUserLimit();
 };
 

@@ -1,13 +1,7 @@
 #ifndef USER_HPP
 # define USER_HPP
 
-#include <iostream>
-#include <string>
-#include <map>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-
-class Channel;
+#include "ft_irc.hpp"
 
 class User {
 private:
@@ -16,18 +10,14 @@ private:
     sockaddr_in _addr;
     int         _sockfd;
 
-	std::map<std::string, Channel *>	_channels;
-
-	Channel	*_activeChannel;
+	ChannelMap	_channels;
 
 	User();
 public:
-	User(int sockfd, sockaddr &_addr);
+	User(int servSockfd);
 	virtual ~User();
 
-	void	sendChannelMsg(std::string &msg);
-	// void	sendChannelMsg(std::string &msg, std::string &channel);
-	// void	sendChannelMsg(std::string &msg, Channel *channel);
+	void	sendChannelMsg(std::string &channel, std::string &msg);
 	void	sendPrivateMsg(std::string &msg, std::string &target);
 	void	joinChannel(std::string &channel);
 	virtual void	leaveChannel();

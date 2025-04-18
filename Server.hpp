@@ -1,23 +1,16 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-#include "Channel.hpp"
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <string.h>
-#include <signal.h>
-#include <cmath>
+#include "ft_irc.hpp"
 
 class Server {
 private:
 	int	_sockfd;
-	sockaddr_in	_serv_addr;
+	sockaddr_in	_addr;
 	std::string	_password;
 
-	std::map<std::string, Channel *>	_channels;
-	std::map<std::string, User *>	_users;
+	ChannelMap	_channels;
+	UserMap	_users;
 	
 	Server();
 

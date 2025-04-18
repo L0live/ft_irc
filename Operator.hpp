@@ -1,7 +1,7 @@
 #ifndef OPERATOR_HPP
 # define OPERATOR_HPP
 
-#include "User.hpp"
+#include "ft_irc.hpp"
 
 class Operator : public User {
 public:
@@ -25,7 +25,6 @@ public:
 	void	giveOperatorStatus(std::string &user);
 	void	removeOperatorStatus(std::string &user);
 	void	setUserLimit(std::string &userLimit);
-	// void	setUserLimit(long long &userLimit);
 	void	removeUserLimit();
 };
 
