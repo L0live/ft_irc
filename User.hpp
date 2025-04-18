@@ -32,7 +32,7 @@ public:
 	void	setNickname(std::string &nickname);
 	std::string	getUsername() const;
 	std::string	getNickname() const;
-	sockaddr    getAddr() const;
+	sockaddr_in    getAddr() const;
 	int	        getSockfd() const;
 };
 

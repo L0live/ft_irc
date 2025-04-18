@@ -3,7 +3,8 @@
 
 User::User(int servSockfd) {
 	std::cout << "Waiting for connections..." << std::endl;
-	_sockfd = accept(servSockfd, (sockaddr *)&_addr, NULL); // on attend jusqu'a ce que le client se connecte
+	socklen_t addr_len = sizeof(_addr);
+	_sockfd = accept(servSockfd, (sockaddr *)&_addr, &addr_len); // on attend jusqu'a ce que le client se connecte
 	if (_sockfd < 0) {
 		throw std::runtime_error("Error: accepting connection");
 	}
@@ -27,3 +28,26 @@ void User::sendChannelMsg(std::string &channel, std::string &msg) {
 		return ;
 	tmpChannel->sendAllUser(_nickname, msg);
 }
+
+void User::sendPrivateMsg(std::string &msg, std::string &target) {
+	(void)msg;
+	(void)target;
+} // TODO
+
+void User::joinChannel(std::string &channel) {
+	(void)channel;
+} // TODO
+
+void User::leaveChannel() {} // TODO
+
+void User::setUsername(std::string &username) {_username = username;}
+
+void User::setNickname(std::string &nickname) {_nickname = nickname;}
+
+std::string User::getUsername() const {return _username;}
+
+std::string User::getNickname() const {return _nickname;}
+
+sockaddr_in User::getAddr() const {return _addr;}
+
+int User::getSockfd() const {return _sockfd;}
