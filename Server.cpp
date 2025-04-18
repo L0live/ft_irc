@@ -92,8 +92,9 @@ void	Server::run() {
 			throw std::runtime_error("Error: receiving data");
 		}
 		buffer[bytes_received] = '\0';
-		
 		std::cout << "Received: " << buffer << std::endl;
+		if (strncmp(buffer, "JOIN", 3) == false)
+			break;		
 	}
 	close(client_sockfd);
 }

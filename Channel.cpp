@@ -32,30 +32,18 @@ void	Channel::sendAllUser(std::string &user, std::string &msg)
 	std::map<std::string, User *>::iterator it;
 	for (it = _users.begin(); it != _users.end(); ++it)
 	{
-		if (it->first != user) 
-			it->second->sendChannelMsg(msg);  
+		it->second->sendChannelMsg(msg);
 	}
 }
 
 void	Channel::kickUser(std::string &user)
 {
-	/*
-	if droit operator ok ?
-	
-	alors 
-	
-	*/
-	
 	_operators.erase(user);
 	_users.erase(user);
 }
 
 void	Channel::addUser(User *user)
 {
-	/*
-	if droit operator ok ? je comprend pas trop on en parle demain
-	*/
-
 	if (_userLimit > 0 && (long long)_users.size() >= _userLimit)
 	{
 		std::cerr << "User limit reached" << std::endl;
@@ -98,9 +86,7 @@ void	Channel::giveOperatorStatus(std::string &user)
 {
 	std::map<std::string, User *>::iterator it = _users.find(user);
 	if (it != _users.end())
-		std::cout << "operator new?" << std::endl;
-		//copy ou egale operator ?!
-
+		it->second = new Operator((Operator)it->second);
 }
 
 void	Channel::removeOperatorStatus(std::string &user)
@@ -111,4 +97,21 @@ void	Channel::removeOperatorStatus(std::string &user)
 		//delete it->second si new operator ? 
 		_operators.erase(it);
 	}
+}
+
+void	Channel::setUserLimit(std::string &userLimit)
+{
+	std::istringstream iss(userLimit);
+	char *endptr;
+	
+	if(iss >> this->_userLimit)
+		this->_userLimit = std::strtoll(userLimit.c_str(), &endptr, 10);
+	else
+		std::cout << "Error of setUserLimit" << std::endl;
+	//! A checker. NULLLLLL !!!!
+}
+
+void	Channel::removeUserLimit()
+{
+	this->_userLimit = -1;
 }
