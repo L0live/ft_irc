@@ -1,7 +1,7 @@
 #ifndef OPERATOR_HPP
 # define OPERATOR_HPP
 
-#include "ft_irc.hpp"
+#include "User.hpp"
 
 class Operator : public User {
 public:

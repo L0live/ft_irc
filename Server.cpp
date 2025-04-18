@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "ft_irc.hpp"
 
 Server::Server() : _password("") {init("6667");}
 

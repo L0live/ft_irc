@@ -1,7 +1,15 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-#include "ft_irc.hpp"
+#include <iostream>
+#include <map>
+#include <netinet/in.h>
+
+class User;
+class Channel;
+
+typedef std::map<std::string, Channel *>	ChannelMap;
+typedef std::map<std::string, User *>		UserMap;
 
 class Server {
 private:

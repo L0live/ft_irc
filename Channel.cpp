@@ -1,4 +1,5 @@
-#include	"Channel.hpp"
+#include "Channel.hpp"
+#include "ft_irc.hpp"
 
 Channel::Channel() : _name(""), _userLimit(-1), _byInvitation(false) {}
 

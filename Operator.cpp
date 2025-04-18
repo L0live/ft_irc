@@ -1,5 +1,5 @@
-#include	"Operator.hpp"
-#include	<sstream>
+#include "Operator.hpp"
+#include "ft_irc.hpp"
 
 Operator::~Operator(){}
 

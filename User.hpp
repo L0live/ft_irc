@@ -1,7 +1,13 @@
 #ifndef USER_HPP
 # define USER_HPP
 
-#include "ft_irc.hpp"
+#include <iostream>
+#include <map>
+#include <netinet/in.h>
+
+class Channel;
+
+typedef std::map<std::string, Channel *>	ChannelMap;
 
 class User {
 private:

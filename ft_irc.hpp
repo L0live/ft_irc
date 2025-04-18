@@ -10,15 +10,6 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <cmath>
-
-class Channel;
-class User;
-class Operator;
-
-typedef std::map<std::string, Channel *>	ChannelMap;
-typedef std::map<std::string, User *>		UserMap;
-typedef std::map<std::string, Operator *>	OperatorMap;
-
 #include "Server.hpp"
 #include "Channel.hpp"
 #include "User.hpp"

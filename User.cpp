@@ -1,4 +1,5 @@
 #include "User.hpp"
+#include "ft_irc.hpp"
 
 User::User(int servSockfd) {
 	std::cout << "Waiting for connections..." << std::endl;
