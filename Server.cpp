@@ -20,12 +20,6 @@ Server  &Server::operator=(const Server &src) { // A revoir, copy profonde ?
 }
 
 Server::~Server() {
-	// for (ChannelMap::iterator it = _channels.begin(); it != _channels.end(); it++) {
-	// 	delete it->second;
-	// }
-	// for (std::map<std::string, IClient *>::iterator it = _users.begin(); it != _users.end(); it++) {
-	// 	delete it->second;
-	// }
 	if (_sockfd != -1) {
 		close(_sockfd);
 	}
@@ -67,13 +61,10 @@ void	Server::run() {
 	User user(_sockfd); // on cree un user
 
 	// on initialise le buffer
-	char buffer[1024];
 	while (true) {
-		memset(buffer, '\0', sizeof(buffer));
+		std::istringstream request(user.receiveRequest());
+		//TODO fonction a nommer
+		user.interpretRequest(request);
 
-		recv(user.getSockfd(), buffer, sizeof(buffer) - 1, 0); // la on recoit le message du client
-		std::cout << "Received: " << buffer << std::endl;
-		if (!strncmp(buffer, "JOIN", 3))
-			break;
 	}
 }

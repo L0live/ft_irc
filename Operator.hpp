@@ -7,7 +7,7 @@ class Operator : public User {
 public:
     ~Operator();
 
-	void	leaveChannel();
+	void	leaveChannel(std::istringstream &request);
 	void	kick(std::string &target);
 	// void	kick(std::string &target, Channel *channel);
 	// void	kick(std::string &target, std::string &channel);

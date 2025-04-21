@@ -11,8 +11,12 @@ User::User(int servSockfd) {
 
 	std::cout << "Client connected: " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
 
+	receiveRequest();
+	std::istringstream	authRequest(receiveRequest());
+	interpretRequest(authRequest);
+
 	// On envoie un message de bienvenue au client
-	std::string welcome_msg = "Welcome to the ft_IRC server!\n";
+	std::string welcome_msg = RPL_WELCOME(_nickname, CLIENT(_nickname, _username));
 	send(_sockfd, welcome_msg.c_str(), welcome_msg.size(), 0);
 }
 
@@ -22,27 +26,71 @@ User::~User() {
 	}
 }
 
-void User::sendChannelMsg(std::string &channel, std::string &msg) {
-	Channel *tmpChannel = _channels.find(channel)->second;
-	if (!tmpChannel)
-		return ;
-	tmpChannel->sendAllUser(_nickname, msg);
+std::string User::receiveRequest() {
+	std::string	tmp;
+	char buffer[1024];
+	memset(buffer, '\0', sizeof(buffer));
+	while (recv(_sockfd, buffer, sizeof(buffer) - 1, 0)) {
+		tmp += buffer;
+		memset(buffer, '\0', sizeof(buffer));
+	}
+
+	std::cout << "Received: " << tmp << std::endl;
+	return tmp;
 }
 
-void User::sendPrivateMsg(std::string &msg, std::string &target) {
-	(void)msg;
-	(void)target;
+User::CommandMap	User::init_commands() {
+
+	CommandMap commands;
+
+	commands["PASS"] = &User::checkPass;
+	commands["NICK"] = &User::setNickname;
+	commands["USER"] = &User::setUsername;
+	commands["JOIN"] = &User::joinChannel;
+	return commands;
+}
+
+void User::interpretRequest(std::istringstream &request) {
+	static CommandMap commands = init_commands();
+
+	std::string	token;
+	if (request >> token) {
+		std::cout << "command: " << token << std::endl;
+		CommandMap::iterator	it = commands.find(token);
+		if (it != commands.end())
+			(this->*(it->second))(request);
+	}
+}
+
+void User::sendChannelMsg(std::istringstream &request) {
+	std::string	token;
+
+	if (request >> token) {
+		Channel *tmpChannel = _channels.find(token)->second;
+		if (!tmpChannel)
+			return ;
+		//tmpChannel->sendAllUser(_nickname, request);
+	}
 } // TODO
 
-void User::joinChannel(std::string &channel) {
-	(void)channel;
+void User::sendPrivateMsg(std::istringstream &request) {
+	(void)request;
 } // TODO
 
-void User::leaveChannel() {} // TODO
+void User::joinChannel(std::istringstream &channel) {
+	std::string	token;
+	
+	if (channel >> token)
+		std::cout << _nickname << " has joined " << token << std::endl;
+} // TODO
 
-void User::setUsername(std::string &username) {_username = username;}
+void User::leaveChannel(std::istringstream &request) {(void)request;} // TODO
 
-void User::setNickname(std::string &nickname) {_nickname = nickname;}
+void User::checkPass(std::istringstream &request) {(void)request;}
+
+void User::setUsername(std::istringstream &request) {request >> _username;}
+
+void User::setNickname(std::istringstream &request) {request >> _nickname;}
 
 std::string User::getUsername() const {return _username;}
 

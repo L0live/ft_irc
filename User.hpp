@@ -1,9 +1,10 @@
 #ifndef USER_HPP
 # define USER_HPP
 
-#include <iostream>
-#include <map>
-#include <netinet/in.h>
+#include 	<iostream>
+#include 	<map>
+#include 	<netinet/in.h>
+#include	<sstream>
 
 class Channel;
 
@@ -17,19 +18,25 @@ private:
     int         _sockfd;
 
 	ChannelMap	_channels;
+	typedef void (User::*CommandHandler)(std::istringstream &);
+	typedef std::map<std::string, User::CommandHandler> CommandMap;
 
 	User();
 public:
 	User(int servSockfd);
 	virtual ~User();
 
-	void	sendChannelMsg(std::string &channel, std::string &msg);
-	void	sendPrivateMsg(std::string &msg, std::string &target);
-	void	joinChannel(std::string &channel);
-	virtual void	leaveChannel();
+	std::string	receiveRequest();
+	static CommandMap	init_commands();
+	void	interpretRequest(std::istringstream &request);
+	void	sendChannelMsg(std::istringstream &request);
+	void	sendPrivateMsg(std::istringstream &request);
+	void	joinChannel(std::istringstream &request);
+	virtual void	leaveChannel(std::istringstream &request);
 
-	void	setUsername(std::string &username);
-	void	setNickname(std::string &nickname);
+	void	checkPass(std::istringstream &request);
+	void	setUsername(std::istringstream &request);
+	void	setNickname(std::istringstream &request);
 	std::string	getUsername() const;
 	std::string	getNickname() const;
 	sockaddr_in    getAddr() const;
