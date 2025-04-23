@@ -58,11 +58,11 @@ User::CommandMap	User::init_commands() {
 	commands["NICK"] = &User::setNickname;
 	commands["USER"] = &User::setUsername;
 	commands["JOIN"] = &User::joinChannel;
-	    commands["LEAVE"] = &User::leaveChannel; // Ajout de la commande LEAVE
-    commands["PRIVMSG"] = &User::sendPrivateMsg; // Ajout de la commande PRIVMSG
-    commands["CHANNELMSG"] = &User::sendChannelMsg; // Ajout de la commande CHANNELMSG
-    commands["KICK"] = &User::kick; // Ajout de la commande KICK
-    commands["TOPIC"] = &User::setTopic; // Ajout de la commande TOPIC
+	commands["LEAVE"] = &User::leaveChannel;
+    commands["PRIVMSG"] = &User::sendPrivateMsg;
+    commands["CHANNELMSG"] = &User::sendChannelMsg;
+    commands["KICK"] = &User::kick;
+    commands["TOPIC"] = &User::setTopic;
 	return commands;
 }
 
