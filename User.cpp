@@ -10,10 +10,21 @@ User::User(int servSockfd) {
 	}
 
 	std::cout << "Client connected: " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
-
-	receiveRequest();
-	std::istringstream	authRequest(receiveRequest());
-	interpretRequest(authRequest);
+	
+	while (true) {
+		std::istringstream request(receiveRequest());
+		std::string	tokenLine;
+		std::getline(request, tokenLine);
+		if (tokenLine != "CAP LS 302\r") {
+			std::istringstream	tmprequest(tokenLine + '\n' + std::string(
+				std::istreambuf_iterator<char>(request), std::istreambuf_iterator<char>()));
+			interpretRequest(tmprequest);
+		}
+		else
+			interpretRequest(request);
+		if (!_username.empty())
+			break;
+	}
 
 	// On envoie un message de bienvenue au client
 	std::string welcome_msg = RPL_WELCOME(_nickname, CLIENT(_nickname, _username));
@@ -27,16 +38,16 @@ User::~User() {
 }
 
 std::string User::receiveRequest() {
-	std::string	tmp;
-	char buffer[1024];
-	memset(buffer, '\0', sizeof(buffer));
-	while (recv(_sockfd, buffer, sizeof(buffer) - 1, 0)) {
-		tmp += buffer;
-		memset(buffer, '\0', sizeof(buffer));
-	}
+	
+	char	buffer[1024];
+	int		tmp;
 
-	std::cout << "Received: " << tmp << std::endl;
-	return tmp;
+	memset(buffer, '\0', sizeof(buffer));
+	tmp = recv(_sockfd, buffer, sizeof(buffer) - 1, 0);
+	if (tmp <= 0) // si empty modifié pour renvoyer uniquement chaine vide
+		return ("");	
+	std::cout << "Received: " << buffer << std::endl;
+	return std::string(buffer);
 }
 
 User::CommandMap	User::init_commands() {
@@ -47,18 +58,28 @@ User::CommandMap	User::init_commands() {
 	commands["NICK"] = &User::setNickname;
 	commands["USER"] = &User::setUsername;
 	commands["JOIN"] = &User::joinChannel;
+	    commands["LEAVE"] = &User::leaveChannel; // Ajout de la commande LEAVE
+    commands["PRIVMSG"] = &User::sendPrivateMsg; // Ajout de la commande PRIVMSG
+    commands["CHANNELMSG"] = &User::sendChannelMsg; // Ajout de la commande CHANNELMSG
+    commands["KICK"] = &User::kick; // Ajout de la commande KICK
+    commands["TOPIC"] = &User::setTopic; // Ajout de la commande TOPIC
 	return commands;
 }
 
 void User::interpretRequest(std::istringstream &request) {
 	static CommandMap commands = init_commands();
 
-	std::string	token;
-	if (request >> token) {
-		std::cout << "command: " << token << std::endl;
-		CommandMap::iterator	it = commands.find(token);
-		if (it != commands.end())
-			(this->*(it->second))(request);
+	std::string	tokenLine;
+	std::getline(request, tokenLine);
+	while (!tokenLine.empty()) {
+		std::istringstream	requestLine(tokenLine);
+		std::string	token;
+		if (requestLine >> token) {
+			CommandMap::iterator	it = commands.find(token);
+			if (it != commands.end())
+				(this->*(it->second))(requestLine);
+		}
+		std::getline(request, tokenLine);
 	}
 }
 
@@ -77,12 +98,15 @@ void User::sendPrivateMsg(std::istringstream &request) {
 	(void)request;
 } // TODO
 
-void User::joinChannel(std::istringstream &channel) {
+void User::joinChannel(std::istringstream &request) {
 	std::string	token;
 	
-	if (channel >> token)
-		std::cout << _nickname << " has joined " << token << std::endl;
-} // TODO
+	if (request >> token) {
+		std::string	msg = RPL_JOIN(CLIENT(_nickname, _username), token);
+		send(_sockfd, msg.c_str(), msg.size(), 0);
+		std::cout << "Sended: " << msg << std::endl;
+	}
+}
 
 void User::leaveChannel(std::istringstream &request) {(void)request;} // TODO
 

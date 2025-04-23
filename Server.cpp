@@ -16,6 +16,7 @@ Server  &Server::operator=(const Server &src) { // A revoir, copy profonde ?
 	_password = src._password;
 	_channels = src._channels;
 	_users = src._users;
+	_usersfd = src._usersfd;
 	return *this;
 }
 
@@ -37,8 +38,9 @@ void	Server::init(std::string port) {
 		throw std::runtime_error("Error: creating socket");
 	}
 
-	// setsockopt() ???
-
+	int opt = 1;
+	setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+	
 	// On initialise des trucs
 	addrinfo hints, *res;
 	memset(&hints, '\0', sizeof(hints)); // '\0' partout
@@ -58,13 +60,54 @@ void	Server::run() {
 	std::cout << "Server running on " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
 	listen(_sockfd, 5); // on le met en mode ecoute
 
-	User user(_sockfd); // on cree un user
+	std::vector<struct pollfd> fds;
+	struct pollfd server_poll;
+    server_poll.fd = _sockfd;
+    server_poll.events = POLLIN;
+	fds.push_back(server_poll);
 
-	// on initialise le buffer
 	while (true) {
-		std::istringstream request(user.receiveRequest());
-		//TODO fonction a nommer
-		user.interpretRequest(request);
+		int ret = poll(&fds[0], fds.size(), 1);
+		if (ret <= 0)
+			continue;
+		for (size_t i = 0; i < fds.size(); i++)
+		{
+			if (fds[i].revents & POLLIN){
+				if (fds[i].fd == _sockfd)
+				{
+					//nouvelle connexion d'user
+					User *user = new User(_sockfd);
+					struct pollfd client_poll;
+				    client_poll.fd = user->getSockfd();
+				    client_poll.events = POLLIN;
+					fds.push_back(client_poll);
+					this->_users.insert(std::make_pair(user->getNickname(), user));
+					this->_usersfd.insert(std::make_pair(user->getSockfd(), user));
+				}
+				else
+				{
+					std::map<int, User*>::iterator it = _usersfd.find(fds[i].fd);
+					if (it != _usersfd.end()) //user find
+					{
+						User* tmp = it->second;
+						std::string stdTmp = tmp->receiveRequest();
+						if (stdTmp.empty())
+						{
+							// Del user, userfd et iterator
+							_users.erase(tmp->getNickname());
+							_usersfd.erase(it);
+							fds.erase(fds.begin() + i);
+							i--;
+							delete (tmp);
+							continue;
+						}		
+						std::istringstream request(stdTmp);
+						tmp->interpretRequest(request);
+					}
+				}
 
+			}
+		}
 	}
 }
+

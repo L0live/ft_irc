@@ -31,7 +31,7 @@ public:
 
 	void	sendAllUser(std::string &user, std::string &msg);
 	// Operator
-	void    kickUser(std::string &user);
+	void    kickUser(const std::string &user);
 	void	addUser(User *user);
 	// TOPIC
 	void	setTopic(std::string &topic);
@@ -41,6 +41,7 @@ public:
 	bool	getByInvitation() const;
 	// void	setRestrictions(type &restrictions); ???
 	// void	removeRestrictions(); ???
+	UserMap	getUsers();
 	void	setPassword(std::string &password);
 	void	removePassword();
 	void	giveOperatorStatus(std::string &user);

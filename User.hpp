@@ -11,7 +11,7 @@ class Channel;
 typedef std::map<std::string, Channel *>	ChannelMap;
 
 class User {
-private:
+protected:
 	std::string	_username;
 	std::string _nickname;
     sockaddr_in _addr;
@@ -32,6 +32,11 @@ public:
 	void	sendChannelMsg(std::istringstream &request);
 	void	sendPrivateMsg(std::istringstream &request);
 	void	joinChannel(std::istringstream &request);
+	/*
+	kick et settopic ici ?*/
+	virtual void	setTopic(std::string &topic) = 0;
+	virtual void	kick(std::string &target) = 0;
+	
 	virtual void	leaveChannel(std::istringstream &request);
 
 	void	checkPass(std::istringstream &request);

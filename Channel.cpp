@@ -29,7 +29,7 @@ void	Channel::sendAllUser(std::string &user, std::string &msg) {
 	}
 }
 
-void	Channel::kickUser(std::string &user) {
+void	Channel::kickUser(const std::string &user) {
 	_users.erase(user);
 	_operators.erase(user);
 }
@@ -49,6 +49,10 @@ std::string	Channel::getTopic() const {return (_topic);}
 void	Channel::setByInvitation(bool byInvitation) {_byInvitation = byInvitation;}
 
 bool	Channel::getByInvitation() const {return _byInvitation;}
+
+UserMap Channel::getUsers(){
+	return(this->_users);
+}
 
 void	Channel::setPassword(std::string &password) {_password = password;}
 

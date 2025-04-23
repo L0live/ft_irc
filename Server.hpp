@@ -4,12 +4,15 @@
 #include <iostream>
 #include <map>
 #include <netinet/in.h>
+#include <poll.h>
+#include <vector>
 
 class User;
 class Channel;
 
 typedef std::map<std::string, Channel *>	ChannelMap;
 typedef std::map<std::string, User *>		UserMap;
+typedef std::map<int, User *>				UserFdMap;
 
 class Server {
 private:
@@ -18,7 +21,8 @@ private:
 	std::string	_password;
 
 	ChannelMap	_channels;
-	UserMap	_users;
+	UserMap		_users;
+	UserFdMap	_usersfd;
 	
 	Server();
 
