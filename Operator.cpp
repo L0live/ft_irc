@@ -15,13 +15,12 @@ void Operator::leaveChannel(std::istringstream &request)
 		it->second->kickUser(this->getNickname());
 }
 
-void Operator::kick(std::string &target)
+void Operator::kick(std::istringstream &request) // We must have greatest error handling
 {
-	for (ChannelMap::iterator it = this->_channels.begin(); it != this->_channels.end(); it++){
-		if (it->second->getUsers().find(target) != it->second->getUsers().end())
-		{
-			it->second->kickUser(target);
-			break;
-		}
+	std::string channel;
+	std::string token;
+	if (request >> channel) {
+		request >> token;
+		_channels.find(channel)->second->kickUser(token);
 	}
 }

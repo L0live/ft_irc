@@ -23,17 +23,21 @@ private:
 	ChannelMap	_channels;
 	UserMap		_users;
 	UserFdMap	_usersfd;
-	
-	Server();
 
+	Server();
+	
 	void	init(std::string port);
 public:
+	typedef void (User::*CommandHandler)(std::istringstream &);
+	typedef std::map<std::string, CommandHandler> CommandMap;
+	
 	Server(std::string port, std::string password);
 	Server(const Server &src);
 	Server	&operator=(const Server &src);
 	~Server();
 	
 	void	run();
+	CommandMap	init_commands();
 	void	sendPrivateMsg(User *user, const std::string &msg, const std::string &target);
 	void	joinChannel(User *user, const std::string &channel);
 	void	addChannel(User *user, Channel *channel);

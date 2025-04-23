@@ -5,26 +5,10 @@ User::User(int servSockfd) {
 	std::cout << "Waiting for connections..." << std::endl;
 	socklen_t addr_len = sizeof(_addr);
 	_sockfd = accept(servSockfd, (sockaddr *)&_addr, &addr_len); // on attend jusqu'a ce que le client se connecte
-	if (_sockfd < 0) {
-		throw std::runtime_error("Error: accepting connection");
-	}
+	if (_sockfd < 0)
+		return ;
 
 	std::cout << "Client connected: " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
-	
-	while (true) {
-		std::istringstream request(receiveRequest());
-		std::string	tokenLine;
-		std::getline(request, tokenLine);
-		if (tokenLine != "CAP LS 302\r") {
-			std::istringstream	tmprequest(tokenLine + '\n' + std::string(
-				std::istreambuf_iterator<char>(request), std::istreambuf_iterator<char>()));
-			interpretRequest(tmprequest);
-		}
-		else
-			interpretRequest(request);
-		if (!_username.empty())
-			break;
-	}
 
 	// On envoie un message de bienvenue au client
 	std::string welcome_msg = RPL_WELCOME(_nickname, CLIENT(_nickname, _username));
@@ -50,24 +34,8 @@ std::string User::receiveRequest() {
 	return std::string(buffer);
 }
 
-User::CommandMap	User::init_commands() {
-
-	CommandMap commands;
-
-	commands["PASS"] = &User::checkPass;
-	commands["NICK"] = &User::setNickname;
-	commands["USER"] = &User::setUsername;
-	commands["JOIN"] = &User::joinChannel;
-	commands["LEAVE"] = &User::leaveChannel;
-    commands["PRIVMSG"] = &User::sendPrivateMsg;
-    commands["CHANNELMSG"] = &User::sendChannelMsg;
-    commands["KICK"] = &User::kick;
-    commands["TOPIC"] = &User::setTopic;
-	return commands;
-}
-
-void User::interpretRequest(std::istringstream &request) {
-	static CommandMap commands = init_commands();
+void User::interpretRequest(std::istringstream &request, Server &server) {
+	static Server::CommandMap commands = server.init_commands();
 
 	std::string	tokenLine;
 	std::getline(request, tokenLine);
@@ -75,7 +43,7 @@ void User::interpretRequest(std::istringstream &request) {
 		std::istringstream	requestLine(tokenLine);
 		std::string	token;
 		if (requestLine >> token) {
-			CommandMap::iterator	it = commands.find(token);
+			Server::CommandMap::iterator	it = commands.find(token);
 			if (it != commands.end())
 				(this->*(it->second))(requestLine);
 		}

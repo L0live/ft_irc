@@ -21,6 +21,13 @@ Server  &Server::operator=(const Server &src) { // A revoir, copy profonde ?
 }
 
 Server::~Server() {
+	for (ChannelMap::iterator it = _channels.begin(); it != _channels.end(); it++) {
+		delete it->second;
+	}
+	for (UserMap::iterator it = _users.begin(); it != _users.end(); it++) {
+		delete it->second;
+	}
+	
 	if (_sockfd != -1) {
 		close(_sockfd);
 	}
@@ -67,47 +74,56 @@ void	Server::run() {
 	fds.push_back(server_poll);
 
 	while (true) {
-		int ret = poll(&fds[0], fds.size(), 1);
+		int ret = poll(&fds[0], fds.size(), -1);
 		if (ret <= 0)
 			continue;
-		for (size_t i = 0; i < fds.size(); i++)
-		{
-			if (fds[i].revents & POLLIN){
-				if (fds[i].fd == _sockfd)
-				{
+		for (size_t i = 0; i < fds.size(); i++) {
+			if (fds[i].revents & POLLIN) {
+				if (fds[i].fd == _sockfd) {
 					//nouvelle connexion d'user
 					User *user = new User(_sockfd);
+					if (user->getSockfd() == -1) {
+						delete user;
+						continue;
+					}
 					struct pollfd client_poll;
 				    client_poll.fd = user->getSockfd();
 				    client_poll.events = POLLIN;
+					client_poll.revents = 0;
 					fds.push_back(client_poll);
-					this->_users.insert(std::make_pair(user->getNickname(), user));
-					this->_usersfd.insert(std::make_pair(user->getSockfd(), user));
-				}
-				else
-				{
-					std::map<int, User*>::iterator it = _usersfd.find(fds[i].fd);
-					if (it != _usersfd.end()) //user find
-					{
-						User* tmp = it->second;
-						std::string stdTmp = tmp->receiveRequest();
-						if (stdTmp.empty())
-						{
-							// Del user, userfd et iterator
-							_users.erase(tmp->getNickname());
-							_usersfd.erase(it);
-							fds.erase(fds.begin() + i);
-							i--;
-							delete (tmp);
-							continue;
-						}		
-						std::istringstream request(stdTmp);
-						tmp->interpretRequest(request);
+					_users.insert(std::make_pair(user->getNickname(), user));
+					_usersfd.insert(std::make_pair(user->getSockfd(), user));
+				} else {
+					User* user = _usersfd.find(fds[i].fd)->second;
+					std::string tmp = user->receiveRequest();
+					if (tmp.empty()) {
+						// Del user, userfd et iterator
+						_users.erase(user->getNickname());
+						_usersfd.erase(fds[i].fd);
+						fds.erase(fds.begin() + i);
+						i--;
+						delete user;
+						continue;
 					}
+					std::istringstream request(tmp);
+					user->interpretRequest(request, *this);
 				}
-
 			}
 		}
 	}
+}
+
+Server::CommandMap	Server::init_commands() {
+
+	CommandMap commands;
+
+	commands["PASS"] = &User::checkPass;
+	commands["NICK"] = &User::setNickname;
+	commands["USER"] = &User::setUsername;
+	commands["JOIN"] = &User::joinChannel;
+	commands["LEAVE"] = &User::leaveChannel;
+    commands["PRIVMSG"] = &User::sendPrivateMsg;
+    commands["CHANNELMSG"] = &User::sendChannelMsg;// c PRIVMSG aussi
+	return commands;
 }
 
