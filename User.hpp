@@ -33,6 +33,24 @@ public:
 
 	virtual void	leaveChannel(std::istringstream &request);
 
+	// Operator
+	void	kick(std::istringstream &request);
+    void    invite(std::string &target); 
+	// TOPIC
+	void	setTopic(std::string &topic);
+	std::string	getTopic() const;
+	// MODE
+	void	setByInvitation(bool byInvitation);
+	bool	getByInvitation() const;
+	// void	setRestrictions(type &restrictions); ???
+	// void	removeRestrictions(); ???
+	void	setPassword(std::string &password);
+	void	removePassword();
+	void	giveOperatorStatus(std::string &user);
+	void	removeOperatorStatus(std::string &user);
+	void	setUserLimit(std::string &userLimit);
+	void	removeUserLimit();
+
 	void	checkPass(std::istringstream &request);
 	void	setUsername(std::istringstream &request);
 	void	setNickname(std::istringstream &request);

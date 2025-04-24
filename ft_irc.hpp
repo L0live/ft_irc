@@ -13,7 +13,6 @@
 #include "Server.hpp"
 #include "Channel.hpp"
 #include "User.hpp"
-#include "Operator.hpp"
 
 #define CLIENT(nick, user)							(std::string(nick) + "!" + std::string(user) + "@localhost")
 #define PRIVMSG(client, target, message)			(":" + client + " PRIVMSG " + target + " :" + message + "\r\n")

@@ -76,7 +76,25 @@ void User::joinChannel(std::istringstream &request) {
 	}
 }
 
-void User::leaveChannel(std::istringstream &request) {(void)request;} // TODO
+void User::leaveChannel(std::istringstream &request)
+{
+	std::string	titleChannel;
+	request >> titleChannel;
+
+	ChannelMap::iterator it = this->_channels.find(titleChannel);
+	if (it != _channels.end())
+		it->second->kickUser(this->getNickname());
+}
+
+void User::kick(std::istringstream &request) // We must have greatest error handling
+{
+	std::string channel;
+	std::string token;
+	if (request >> channel) {
+		request >> token;
+		_channels.find(channel)->second->kickUser(token);
+	}
+}
 
 void User::checkPass(std::istringstream &request) {(void)request;}
 

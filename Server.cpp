@@ -63,41 +63,39 @@ void	Server::init(std::string port) {
 	bind(_sockfd, (struct sockaddr *)&_addr, sizeof(_addr)); // on relie le socket du server a notre host
 }
 
+struct pollfd initPollfd(int sockfd) {
+	struct pollfd pfd;
+	pfd.fd = sockfd;
+	pfd.events = POLLIN;
+	pfd.revents = 0;
+	return pfd;
+}
+
 void	Server::run() {
 	std::cout << "Server running on " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
 	listen(_sockfd, 5); // on le met en mode ecoute
 
 	std::vector<struct pollfd> fds;
-	struct pollfd server_poll;
-    server_poll.fd = _sockfd;
-    server_poll.events = POLLIN;
-	fds.push_back(server_poll);
+	fds.push_back(initPollfd(_sockfd));
 
 	while (true) {
-		int ret = poll(&fds[0], fds.size(), -1);
-		if (ret <= 0)
+		if (poll(&fds[0], fds.size(), -1) <= 0)
 			continue;
 		for (size_t i = 0; i < fds.size(); i++) {
 			if (fds[i].revents & POLLIN) {
 				if (fds[i].fd == _sockfd) {
-					//nouvelle connexion d'user
 					User *user = new User(_sockfd);
 					if (user->getSockfd() == -1) {
 						delete user;
 						continue;
 					}
-					struct pollfd client_poll;
-				    client_poll.fd = user->getSockfd();
-				    client_poll.events = POLLIN;
-					client_poll.revents = 0;
-					fds.push_back(client_poll);
+					fds.push_back(initPollfd(user->getSockfd()));
 					_users.insert(std::make_pair(user->getNickname(), user));
 					_usersfd.insert(std::make_pair(user->getSockfd(), user));
 				} else {
 					User* user = _usersfd.find(fds[i].fd)->second;
 					std::string tmp = user->receiveRequest();
 					if (tmp.empty()) {
-						// Del user, userfd et iterator
 						_users.erase(user->getNickname());
 						_usersfd.erase(fds[i].fd);
 						fds.erase(fds.begin() + i);
