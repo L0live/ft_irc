@@ -6,10 +6,8 @@
 #include <netinet/in.h>
 
 class User;
-class Operator;
 
 typedef std::map<std::string, User *>		UserMap;
-typedef std::map<std::string, Operator *>	OperatorMap;
 
 class Channel {
 private:
@@ -18,7 +16,7 @@ private:
 	std::string _topic;
 	//type  _restrictions; ???
 	UserMap		_users;
-	OperatorMap	_operators;
+	UserMap		_operators;
 	long long   _userLimit;
 	bool        _byInvitation;
 
@@ -29,9 +27,10 @@ public:
 	Channel	&operator=(const Channel &src);
 	~Channel();
 
-	void	sendAllUser(std::string &user, std::string &msg);
+	void	sendAllUser(const std::string &user, std::string msg);
 	// Operator
 	void    kickUser(const std::string &user);
+	void    Leave(const std::string &user);
 	void	addUser(User *user);
 	// TOPIC
 	void	setTopic(std::string &topic);

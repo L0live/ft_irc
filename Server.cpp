@@ -78,6 +78,12 @@ void	Server::run() {
 	std::vector<struct pollfd> fds;
 	fds.push_back(initPollfd(_sockfd));
 
+/*
+	On envoie un message de bienvenue au client
+	std::string welcome_msg = RPL_WELCOME(_nickname, CLIENT(_nickname, _username));
+	send(_sockfd, welcome_msg.c_str(), welcome_msg.size(), 0);
+*/
+
 	while (true) {
 		if (poll(&fds[0], fds.size(), -1) <= 0)
 			continue;
@@ -111,17 +117,21 @@ void	Server::run() {
 	}
 }
 
-Server::CommandMap	Server::init_commands() {
+Server::CommandMap	Server::init_commands()
+{
 
 	CommandMap commands;
 
-	commands["PASS"] = &User::checkPass;
+	commands["PRIVMSG"] = &User::sendMsg;
+	commands["JOIN"] = &User::joinChannel;
+	commands["PART"] = &User::leaveChannel;
+	commands["KICK"] = &User::leaveChannel;
+	commands["INVITE"] = &User::invite;
+	commands["TOPIC"] = &User::topic;
+	commands["MODE"] = &User::mode;
 	commands["NICK"] = &User::setNickname;
 	commands["USER"] = &User::setUsername;
-	commands["JOIN"] = &User::joinChannel;
-	commands["LEAVE"] = &User::leaveChannel;
-    commands["PRIVMSG"] = &User::sendPrivateMsg;
-    commands["CHANNELMSG"] = &User::sendChannelMsg;// c PRIVMSG aussi
+	commands["PASS"] = &User::checkPass;
 	return commands;
 }
 

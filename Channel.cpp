@@ -22,16 +22,31 @@ Channel &Channel::operator=(const Channel &src) {
 
 Channel::~Channel() {}
 
-void	Channel::sendAllUser(std::string &user, std::string &msg) {
+void	Channel::sendAllUser(const std::string &user, std::string msg) {
 	std::string		tmpMsg = user + ": " + msg;
 	for (UserMap::iterator it = _users.begin(); it != _users.end(); ++it) {
 		send(it->second->getSockfd(), tmpMsg.c_str(), tmpMsg.size(), 0);
+	}
+	for (UserMap::iterator it = _operators.begin(); it != _operators.end(); it++) {
+		//std::string command = RPL_KICK(client, channel, target, reason);
 	}
 }
 
 void	Channel::kickUser(const std::string &user) {
 	_users.erase(user);
 	_operators.erase(user);
+	sendAllUser(user, "kickkkkk");
+}
+
+void Channel::Leave(const std::string &user)
+{
+	_users.erase(user);
+	_operators.erase(user);	
+	sendAllUser(user, "leave");
+#define ERR_NOTONCHANNEL(client, channel)			(": 442 " + client + " " + channel + " :You're not on that channel\r\n")
+#define RPL_PART(client, channel)					(":" + client + " PART " + channel + "\r\n")
+#define RPL_PARTMESSAGE(client, channel, message)	(":" + client + " PART " + channel + " :" + message +"\r\n")
+
 }
 
 void	Channel::addUser(User *user) {
@@ -59,19 +74,19 @@ void	Channel::setPassword(std::string &password) {_password = password;}
 void	Channel::removePassword() {_password = "";}
 
 void	Channel::giveOperatorStatus(std::string &user) {
-	User	*tmpUser = _users.find(user)->second;
-	if (!tmpUser)
+	User	*setOperator = _users.find(user)->second;
+	if (!setOperator)
 		return ;
 	_users.erase(user);
-	_operators.insert(std::make_pair(user, (Operator *)tmpUser));
+	_operators.insert(std::make_pair(user, setOperator));
 }
 
-void	Channel::removeOperatorStatus(std::string &user) {
-	Operator	*tmpOperator = _operators.find(user)->second;
-	if (!tmpOperator)
+void	Channel::removeOperatorStatus(std::string &user){
+	User *rmOperator = _operators.find(user)->second;
+	if (!_operators.find(user)->second)
 		return ;
+	_users.insert(std::make_pair(user, rmOperator));
 	_operators.erase(user);
-	_users.insert(std::make_pair(user, (User *)tmpOperator));
 }
 
 void	Channel::setUserLimit(long long &userLimit) {_userLimit = userLimit;}

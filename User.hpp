@@ -27,19 +27,18 @@ public:
 
 	std::string	receiveRequest();
 	void	interpretRequest(std::istringstream &request, Server &server);
-	void	sendChannelMsg(std::istringstream &request);
-	void	sendPrivateMsg(std::istringstream &request);
-	void	joinChannel(std::istringstream &request);
+	void	sendMsg(std::istringstream &request, std::string &client, Server &server);
+	void	joinChannel(std::istringstream &request, std::string &client, Server &server);
 
-	virtual void	leaveChannel(std::istringstream &request);
+	virtual void	leaveChannel(std::istringstream &request, std::string &client, Server &server);
 
 	// Operator
-	void	kick(std::istringstream &request);
-    void    invite(std::string &target); 
+	void	kick(std::istringstream &request, std::string &client, Server &server);
+    void    invite(std::istringstream &request, std::string &client, Server &server); 
 	// TOPIC
-	void	setTopic(std::string &topic);
-	std::string	getTopic() const;
+	void	topic(std::istringstream &request, std::string &client, Server &server);
 	// MODE
+	void	mode(std::istringstream &request, std::string &client, Server &server);
 	void	setByInvitation(bool byInvitation);
 	bool	getByInvitation() const;
 	// void	setRestrictions(type &restrictions); ???
@@ -57,7 +56,7 @@ public:
 	std::string	getUsername() const;
 	std::string	getNickname() const;
 	sockaddr_in	getAddr() const;
-	int	        getSockfd() const;
+	int			getSockfd() const;
 };
 
 #endif
