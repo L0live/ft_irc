@@ -34,6 +34,7 @@ std::string User::receiveRequest() {
 
 void User::interpretRequest(std::istringstream &request, Server &server) {
 	static Server::CommandMap commands = server.init_commands();
+	std::string client = CLIENT(_nickname, _username);
 
 	std::string	tokenLine;
 	std::getline(request, tokenLine);
@@ -43,30 +44,32 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 		if (requestLine >> token) {
 			Server::CommandMap::iterator	it = commands.find(token);
 			if (it != commands.end())
-				(this->*(it->second))(requestLine);
+				(this->*(it->second))(requestLine, client, server);
 		}
 		std::getline(request, tokenLine);
 	}
 }
 
 void User::sendMsg(std::istringstream &request, std::string &client, Server &server){
+	(void) client;
+	(void) server;
 	//PRIVMSG(client, target, message);
 	std::string token;
 	if (request >> token) {
-		Channel *tmpChannel = _channels.find(token)->second;
-		if (!tmpChannel)
+		ChannelMap::iterator	it = _channels.find(token);
+		if (it == _channels.end())
 			return ;
-		
-		//tmpChannel->sendAllUser(_nickname, request);
+		//it->second->sendAllUser(_nickname, request);
 	}
 } // TODO
 
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
+	(void) server;
 	std::string	token;
 	
 	if (request >> token) {
-		std::string	msg = RPL_JOIN(CLIENT(_nickname, _username), token);
+		std::string	msg = RPL_JOIN(client, token);
 		send(_sockfd, msg.c_str(), msg.size(), 0);
 		std::cout << "Sended: " << msg << std::endl;
 	}
@@ -77,6 +80,8 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 
 void User::leaveChannel(std::istringstream &request, std::string &client, Server &server)
 {
+	(void) client;
+	(void) server;
 	std::string	titleChannel;
 	request >> titleChannel;
 
@@ -87,6 +92,8 @@ void User::leaveChannel(std::istringstream &request, std::string &client, Server
 
 void User::kick(std::istringstream &request, std::string &client, Server &server) // We must have greatest error handling
 {
+	(void) client;
+	(void) server;
 	std::string channel;
 	std::string token;
 	if (request >> channel) {
@@ -97,6 +104,9 @@ void User::kick(std::istringstream &request, std::string &client, Server &server
 
 void User::invite(std::istringstream &request, std::string &client, Server &server)
 {
+	(void) request;
+	(void) client;
+	(void) server;
 	#define RPL_INVITERCVR(client, invitee, channel)	(":" + client + " INVITE " + invitee + " " + channel + "\r\n")
 	#define RPL_INVITESNDR(client, invitee, channel)	(": 341 " + client + " " + invitee + " " + channel + "\r\n")
 #define ERR_ALREADYREGISTRED(client)				(": 462 " + client + " ::Unauthorized command (already registered)\r\n")
@@ -104,6 +114,9 @@ void User::invite(std::istringstream &request, std::string &client, Server &serv
 
 void User::topic(std::istringstream &request, std::string &client, Server &server)
 {
+	(void) request;
+	(void) client;
+	(void) server;
 	#define RPL_TOPIC(client, channel, topic)			(":" + client + " TOPIC " + channel + " :" + topic + "\r\n")
 	#define RPL_NOTOPIC(client, channel)				(": 331 " + client + " " + channel + " :No topic is set\r\n")
 	#define RPL_SEETOPIC(client, channel, topic)		(": 332 " + client + " " + channel + " :" + topic + "\r\n")
@@ -112,6 +125,9 @@ void User::topic(std::istringstream &request, std::string &client, Server &serve
 
 void User::mode(std::istringstream &request, std::string &client, Server &server)
 {
+	(void) request;
+	(void) client;
+	(void) server;
 #define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " " + name + "\r\n")
 #define RPL_CHANNELMODEIS(client, channel, modes) 	(": 324 " + client + " " + channel + " " + modes + "\r\n")
 #define ERR_UNKNOWNMODE(client, mode)				(": 472 " + client + " " + mode + " :is unknown mode char to me\r\n")
@@ -124,10 +140,10 @@ void User::setByInvitation(bool byInvitation)
  (void) byInvitation;
 }
 
-bool User::getByInvitation() const
-{
+// bool User::getByInvitation() const
+// {
 
-}
+// }
 
 void User::setPassword(std::string &password)
 {
@@ -145,6 +161,12 @@ void User::giveOperatorStatus(std::string &user)
 
 }
 
+void User::removeOperatorStatus(std::string &user)
+{
+	(void) user;
+
+}
+
 void User::setUserLimit(std::string &userLimit)
 {
 	(void) userLimit;
@@ -156,11 +178,23 @@ void User::removeUserLimit()
 
 }
 
-void User::checkPass(std::istringstream &request) {(void)request;}
+void User::checkPass(std::istringstream &request, std::string &client, Server &server) {
+	(void) request;
+	(void) client;
+	(void) server;
+}
 
-void User::setUsername(std::istringstream &request) {request >> _username;}
+void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
+	(void) client;
+	(void) server;
+	request >> _username;
+}
 
-void User::setNickname(std::istringstream &request) {request >> _nickname;}
+void User::setNickname(std::istringstream &request, std::string &client, Server &server) {
+	(void) client;
+	(void) server;
+	request >> _nickname;
+}
 
 std::string User::getUsername() const {return _username;}
 

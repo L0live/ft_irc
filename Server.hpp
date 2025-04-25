@@ -28,7 +28,7 @@ private:
 	
 	void	init(std::string port);
 public:
-	typedef void (User::*CommandHandler)(std::istringstream &);
+	typedef void (User::*CommandHandler)(std::istringstream &, std::string &, Server &);
 	typedef std::map<std::string, CommandHandler> CommandMap;
 	
 	Server(std::string port, std::string password);

@@ -40,7 +40,7 @@ public:
 	// MODE
 	void	mode(std::istringstream &request, std::string &client, Server &server);
 	void	setByInvitation(bool byInvitation);
-	bool	getByInvitation() const;
+	// bool	getByInvitation() const;
 	// void	setRestrictions(type &restrictions); ???
 	// void	removeRestrictions(); ???
 	void	setPassword(std::string &password);
@@ -50,9 +50,9 @@ public:
 	void	setUserLimit(std::string &userLimit);
 	void	removeUserLimit();
 
-	void	checkPass(std::istringstream &request);
-	void	setUsername(std::istringstream &request);
-	void	setNickname(std::istringstream &request);
+	void	checkPass(std::istringstream &request, std::string &client, Server &server);
+	void	setUsername(std::istringstream &request, std::string &client, Server &server);
+	void	setNickname(std::istringstream &request, std::string &client, Server &server);
 	std::string	getUsername() const;
 	std::string	getNickname() const;
 	sockaddr_in	getAddr() const;
