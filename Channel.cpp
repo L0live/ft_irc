@@ -88,18 +88,12 @@ void	Channel::setPassword(std::string &password) {_password = password;}
 void	Channel::removePassword() {_password = "";}
 
 void	Channel::giveOperatorStatus(std::string &user) {
-	User	*setOperator = _users.find(user)->second;
-	if (!setOperator)
-		return ;
 	_users.erase(user);
-	_operators.insert(std::make_pair(user, setOperator));
+	_operators.insert(std::make_pair(user, _users.find(user)->second));
 }
 
-void	Channel::removeOperatorStatus(std::string &user){
-	User *rmOperator = _operators.find(user)->second;
-	if (!_operators.find(user)->second)
-		return ;
-	_users.insert(std::make_pair(user, rmOperator));
+void	Channel::removeOperatorStatus(std::string &user) {
+	_users.insert(std::make_pair(user, _operators.find(user)->second));
 	_operators.erase(user);
 }
 
