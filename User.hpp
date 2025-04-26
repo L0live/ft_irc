@@ -39,16 +39,6 @@ public:
 	void	topic(std::istringstream &request, std::string &client, Server &server);
 	// MODE
 	void	mode(std::istringstream &request, std::string &client, Server &server);
-	void	setByInvitation(bool byInvitation);
-	// bool	getByInvitation() const;
-	// void	setRestrictions(type &restrictions); ???
-	// void	removeRestrictions(); ???
-	void	setPassword(std::string &password);
-	void	removePassword();
-	void	giveOperatorStatus(std::string &user);
-	void	removeOperatorStatus(std::string &user);
-	void	setUserLimit(std::string &userLimit);
-	void	removeUserLimit();
 
 	void	checkPass(std::istringstream &request, std::string &client, Server &server);
 	void	setUsername(std::istringstream &request, std::string &client, Server &server);

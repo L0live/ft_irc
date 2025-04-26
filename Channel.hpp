@@ -15,6 +15,7 @@ private:
 	std::string _password;
 	std::string _topic;
 	//type  _restrictions; ???
+	std::string _mode;
 	UserMap		_users;
 	UserMap		_operators;
 	long long   _userLimit;
@@ -40,6 +41,8 @@ public:
 	bool	getByInvitation() const;
 	// void	setRestrictions(type &restrictions); ???
 	// void	removeRestrictions(); ???
+	std::string	getMode() const;
+	void	setMode(std::string &mode);
 	bool	isFull();
 	bool	isUser(std::string &user);
 	bool	isOperator(std::string &user);

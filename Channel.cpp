@@ -4,7 +4,7 @@
 Channel::Channel() {}
 
 Channel::Channel(std::string &name, User *user)
-: _name(name), _userLimit(-1), _byInvitation(false) {
+: _name(name), _mode("+itkol"), _userLimit(-1), _byInvitation(false) {
 	_operators.insert(std::make_pair(user->getNickname(), user));
 }
 
@@ -56,6 +56,10 @@ std::string	Channel::getTopic() const {return _topic;}
 void	Channel::setByInvitation(bool byInvitation) {_byInvitation = byInvitation;}
 
 bool	Channel::getByInvitation() const {return _byInvitation;}
+
+std::string	Channel::getMode() const {return _mode;}
+
+void	Channel::setMode(std::string &mode) {_mode = mode;}
 
 bool	Channel::isFull() {
 	if (_userLimit != -1 && (long long)_users.size() >= _userLimit)

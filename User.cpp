@@ -1,6 +1,8 @@
 #include "User.hpp"
 #include "ft_irc.hpp"
 
+User::User() {}
+
 User::User(int servSockfd) {
 	std::cout << "Waiting for connections..." << std::endl;
 	socklen_t addr_len = sizeof(_addr);
@@ -180,13 +182,13 @@ void User::topic(std::istringstream &request, std::string &client, Server &serve
 	std::string channel;
 	if (!(request >> channel)) // Error: no channel (params) // c gerer par Hexchat
 		return ;
-	ChannelMap::iterator it = _channels.find(channel);
-	if (it == _channels.end()) // Error: not in channel // c gerer par Hexchat
+	ChannelMap::iterator itChannel = _channels.find(channel);
+	if (itChannel == _channels.end()) // Error: not in channel // c gerer par Hexchat
 		return ;
 	std::string msg;
 	std::string topic;
 	if (!(request >> topic)) {
-		topic = it->second->getTopic();
+		topic = itChannel->second->getTopic();
 		if (topic.empty())
 			msg = RPL_NOTOPIC(client, channel);
 		else
@@ -194,65 +196,95 @@ void User::topic(std::istringstream &request, std::string &client, Server &serve
 		send(_sockfd, msg.c_str(), msg.size(), 0);
 		return ;
 	}
-	if (!it->second->isOperator(_nickname)) // Error: not operator
+	if (!itChannel->second->isOperator(_nickname)) // Error: not operator
 		return ;
-	it->second->setTopic(topic);
+	itChannel->second->setTopic(topic);
 	msg = RPL_TOPIC(client, channel, topic);
-	it->second->sendAllUser(msg);
+	itChannel->second->sendAllUser(msg);
 }
 
-void User::mode(std::istringstream &request, std::string &client, Server &server)
-{
-	(void) request;
-	(void) client;
+void User::mode(std::istringstream &request, std::string &client, Server &server) {
 	(void) server;
-	#define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " " + name + "\r\n")
-	#define RPL_CHANNELMODEIS(client, channel, modes) 	(": 324 " + client + " " + channel + " " + modes + "\r\n")
-	#define ERR_UNKNOWNMODE(client, mode)				(": 472 " + client + " " + mode + " :is unknown mode char to me\r\n")
-	#define ERR_NOCHANMODES(channel)					(": 477 " + channel + " :Channel doesn't support modes\r\n")
-}
-
-void User::setByInvitation(bool byInvitation)
-{
- (void) byInvitation;
-}
-
-// bool User::getByInvitation() const
-// {
-
-// }
-
-void User::setPassword(std::string &password)
-{
-	(void) password;
-
-}
-
-void User::removePassword()
-{
-
-}
-void User::giveOperatorStatus(std::string &user)
-{
-	(void) user;
-
-}
-
-void User::removeOperatorStatus(std::string &user)
-{
-	(void) user;
-
-}
-
-void User::setUserLimit(std::string &userLimit)
-{
-	(void) userLimit;
-
-}
-
-void User::removeUserLimit()
-{
-
+	std::string channel;
+	if (!(request >> channel)) // Error: no channel (params) // c gerer par Hexchat
+		return ;
+	ChannelMap::iterator itChannel = _channels.find(channel);
+	if (itChannel == _channels.end()) // Error: not in channel // c gerer par Hexchat
+		return ;
+	std::string mode;
+	if (!(request >> mode)) { // Liste des modes
+		std::string msg = RPL_CHANNELMODEIS(client, channel, itChannel->second->getMode());
+		send(_sockfd, msg.c_str(), msg.size(), 0);
+		return ;
+	}
+	if (!itChannel->second->isOperator(_nickname)) // Error: not operator
+		return ;
+	bool define = true;
+	for (std::string::iterator it = mode.begin(); it != mode.end(); it++) {
+		switch (*it) {
+			case '+':
+				define = true;
+				break;
+			case '-':
+				define = false;
+				break;
+			case 'i':
+				if (define)
+					itChannel->second->setByInvitation(true);
+				else
+					itChannel->second->setByInvitation(false);
+				break;
+			// case 't':
+				// Topic command restrictions
+				// break;
+			case 'k':
+				if (define) {
+					std::string password;
+					if (!(request >> password)) // Error: no password (params)
+						return ;
+					itChannel->second->setPassword(password);
+				} else
+					itChannel->second->removePassword();
+				break;
+			case 'o': {
+					std::string target;
+					if (!(request >> target)) // Error: no target (params)
+						return ;
+					if (!itChannel->second->isUser(target)) // Error: target not in channel
+						return ;
+					if (define) {
+						if (itChannel->second->isOperator(target)) // target already operator (No error)
+							return ;
+						itChannel->second->giveOperatorStatus(target);
+					} else {
+						if (!itChannel->second->isOperator(target)) // target not operator (No error)
+							return ;
+						itChannel->second->removeOperatorStatus(target);
+					}
+				}
+				break;
+			case 'l':
+				if (define) {
+					std::string userLimit;
+					if (!(request >> userLimit)) // Error: no user limit (params)
+						return ;
+					char *endptr;
+					long long limit = strtoll(userLimit.c_str(), &endptr, 10);
+					if (*endptr != '\0' || limit < 0) // Error: bad user limit
+						return ;
+					itChannel->second->setUserLimit(limit);
+				} else
+					itChannel->second->removeUserLimit();
+				break;
+			default: // Error: unknown mode
+				break;
+		}
+	}
+	
+	// #define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " " + name + "\r\n")
+	// #define RPL_CHANNELMODEIS(client, channel, modes) 	(": 324 " + client + " " + channel + " " + modes + "\r\n")
+	// #define ERR_UNKNOWNMODE(client, mode)				(": 472 " + client + " " + mode + " :is unknown mode char to me\r\n")
+	// #define ERR_NOCHANMODES(channel)					(": 477 " + channel + " :Channel doesn't support modes\r\n")
 }
 
 void User::checkPass(std::istringstream &request, std::string &client, Server &server) {
