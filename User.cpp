@@ -70,14 +70,15 @@ void User::sendMsg(std::istringstream &request, std::string &client, Server &ser
 		send(it->second->getSockfd(), msg.c_str(), msg.size(), 0);
 		std::cout << "Sended: " << msg << std::endl;
 	}
-	
 }
 
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
 	std::string	target;
 	
-	if (!(request >> target)) // Error: no target
+	if (!(request >> target)) // Error: no target (params) // c check par Hexchat
+		return ;
+	if (target[0] != '#') // Error: not a channel
 		return ;
 	ChannelMap &allChannels = server.getChannels();
 	ChannelMap::iterator	it = allChannels.find(target);
@@ -89,10 +90,12 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 	} else {
 		if (it->second->getByInvitation()) // Error: channel is invite only
 			return ;
+		if (it->second->isFull()) // Error: channel is full
+			return ;
 		it->second->addUser(this);
 		_channels.insert(std::make_pair(target, it->second));
 	}
-	send(_sockfd, msg.c_str(), msg.size(), 0);
+	it->second->sendAllUser(msg);
 	std::cout << "Sended: " << msg << std::endl;
 	// #define ERR_CHANNELISFULL(client, channel)			(": 471 " + client + " " + channel + " :Cannot join channel (+l)\r\n")
 	// #define ERR_INVITEONLYCHAN(client, channel)			(": 473 " + client + " " + channel + " :Cannot join channel (+i)\r\n")
@@ -101,7 +104,7 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 
 void User::leaveChannel(std::istringstream &request, std::string &client, Server &server) {
 	std::string	target;
-	if (!(request >> target)) // Error: no target
+	if (!(request >> target)) // Error: no target (params)
 		return ;
 	ChannelMap::iterator it = _channels.find(target);
 	if (it == _channels.end()) // Error: not in channel
@@ -124,7 +127,7 @@ void User::leaveChannel(std::istringstream &request, std::string &client, Server
 void User::kick(std::istringstream &request, std::string &client, Server &server) {
 	(void) server;
 	std::string channel;
-	if (!(request >> channel)) // Error: no channel
+	if (!(request >> channel)) // Error: no channel (params)
 		return ;
 	ChannelMap::iterator it = _channels.find(channel);
 	if (it == _channels.end()) // Error: not in channel
@@ -132,37 +135,70 @@ void User::kick(std::istringstream &request, std::string &client, Server &server
 	if (!it->second->isOperator(_nickname)) // Error: not operator
 		return ;
 	std::string target;
-	if (!(request >> target)) // Error: no target
+	if (!(request >> target)) // Error: no target (params)
 		return ;
 	if (!it->second->isUser(target)) // Error: target not in channel
 		return ;
 	std::string msg;
-	if (request >> msg) // No message: Error ???
-		msg = RPL_KICK(client, channel, target, msg);
-	else
-		msg = RPL_KICK(client, channel, target, "");
-	it->second->kick(target, msg);
+	if (!(request >> msg)) // No message: Error ???
+		return ;
+	msg = RPL_KICK(client, channel, target, msg);
+	it->second->kick(target);
+	it->second->sendAllUser(msg);
 }
 
-void User::invite(std::istringstream &request, std::string &client, Server &server)
-{
-	(void) request;
-	(void) client;
-	(void) server;
-	#define RPL_INVITERCVR(client, invitee, channel)	(":" + client + " INVITE " + invitee + " " + channel + "\r\n")
-	#define RPL_INVITESNDR(client, invitee, channel)	(": 341 " + client + " " + invitee + " " + channel + "\r\n")
-#define ERR_ALREADYREGISTRED(client)				(": 462 " + client + " ::Unauthorized command (already registered)\r\n")
+void	User::invite(std::istringstream &request, std::string &client, Server &server) {
+	std::string target;
+	if (!(request >> target)) // Error: no target (params) // c check par Hexchat
+		return ;
+	UserMap &users = server.getUsers();
+	UserMap::iterator itTarget = users.find(target);
+	if (itTarget == users.end()) // Error: target not found
+		return ;
+	std::string channel;
+	if (!(request >> channel)) // Error: no channel (params) // c gerer par Hexchat
+		return ;
+	ChannelMap::iterator itChannel = _channels.find(channel);
+	if (itChannel == _channels.end()) // Error: not in channel
+		return ;
+	if (!itChannel->second->isOperator(_nickname)) // Error: not operator
+		return ;
+	if (itChannel->second->isUser(target)) // Error: target already in channel
+		return ;
+	if (itChannel->second->isFull()) // Error: channel is full
+		return ;
+	itChannel->second->addUser(itTarget->second);
+	std::string msg = RPL_INVITESNDR(client, target, channel);
+	send(itTarget->second->getSockfd(), msg.c_str(), msg.size(), 0);
+	msg = RPL_INVITERCVR(client, target, channel);
+	itChannel->second->sendAllUser(msg);
+	// #define ERR_ALREADYREGISTRED(client)				(": 462 " + client + " ::Unauthorized command (already registered)\r\n")
 }
 
-void User::topic(std::istringstream &request, std::string &client, Server &server)
-{
-	(void) request;
-	(void) client;
+void User::topic(std::istringstream &request, std::string &client, Server &server) {
 	(void) server;
-	#define RPL_TOPIC(client, channel, topic)			(":" + client + " TOPIC " + channel + " :" + topic + "\r\n")
-	#define RPL_NOTOPIC(client, channel)				(": 331 " + client + " " + channel + " :No topic is set\r\n")
-	#define RPL_SEETOPIC(client, channel, topic)		(": 332 " + client + " " + channel + " :" + topic + "\r\n")
-
+	std::string channel;
+	if (!(request >> channel)) // Error: no channel (params) // c gerer par Hexchat
+		return ;
+	ChannelMap::iterator it = _channels.find(channel);
+	if (it == _channels.end()) // Error: not in channel // c gerer par Hexchat
+		return ;
+	std::string msg;
+	std::string topic;
+	if (!(request >> topic)) {
+		topic = it->second->getTopic();
+		if (topic.empty())
+			msg = RPL_NOTOPIC(client, channel);
+		else
+			msg = RPL_SEETOPIC(client, channel, topic);
+		send(_sockfd, msg.c_str(), msg.size(), 0);
+		return ;
+	}
+	if (!it->second->isOperator(_nickname)) // Error: not operator
+		return ;
+	it->second->setTopic(topic);
+	msg = RPL_TOPIC(client, channel, topic);
+	it->second->sendAllUser(msg);
 }
 
 void User::mode(std::istringstream &request, std::string &client, Server &server)
@@ -170,11 +206,10 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 	(void) request;
 	(void) client;
 	(void) server;
-#define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " " + name + "\r\n")
-#define RPL_CHANNELMODEIS(client, channel, modes) 	(": 324 " + client + " " + channel + " " + modes + "\r\n")
-#define ERR_UNKNOWNMODE(client, mode)				(": 472 " + client + " " + mode + " :is unknown mode char to me\r\n")
-#define ERR_NOCHANMODES(channel)					(": 477 " + channel + " :Channel doesn't support modes\r\n")
-
+	#define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " " + name + "\r\n")
+	#define RPL_CHANNELMODEIS(client, channel, modes) 	(": 324 " + client + " " + channel + " " + modes + "\r\n")
+	#define ERR_UNKNOWNMODE(client, mode)				(": 472 " + client + " " + mode + " :is unknown mode char to me\r\n")
+	#define ERR_NOCHANMODES(channel)					(": 477 " + channel + " :Channel doesn't support modes\r\n")
 }
 
 void User::setByInvitation(bool byInvitation)

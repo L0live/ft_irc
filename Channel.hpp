@@ -29,7 +29,7 @@ public:
 
 	void	sendAllUser(const std::string &msg);
 	// Operator
-	void    kick(const std::string &target, const std::string &msg);
+	void    kick(const std::string &target);
 	void    leave(const std::string &user, const std::string &msg);
 	void	addUser(User *user);
 	// TOPIC
@@ -40,6 +40,7 @@ public:
 	bool	getByInvitation() const;
 	// void	setRestrictions(type &restrictions); ???
 	// void	removeRestrictions(); ???
+	bool	isFull();
 	bool	isUser(std::string &user);
 	bool	isOperator(std::string &user);
 	bool	isEmpty();

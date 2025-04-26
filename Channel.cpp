@@ -4,7 +4,7 @@
 Channel::Channel() {}
 
 Channel::Channel(std::string &name, User *user)
-: _name(name), _topic("topic is not set"), _userLimit(-1), _byInvitation(false) {
+: _name(name), _userLimit(-1), _byInvitation(false) {
 	_operators.insert(std::make_pair(user->getNickname(), user));
 }
 
@@ -34,10 +34,9 @@ void	Channel::sendAllUser(const std::string &msg) {
 	}
 }
 
-void	Channel::kick(const std::string &target, const std::string &msg) {
+void	Channel::kick(const std::string &target) {
 	_users.erase(target);
 	_operators.erase(target);
-	sendAllUser(msg);
 }
 
 void Channel::leave(const std::string &user, const std::string &msg) {
@@ -47,10 +46,6 @@ void Channel::leave(const std::string &user, const std::string &msg) {
 }
 
 void	Channel::addUser(User *user) {
-	if (_userLimit > 0 && (long long)_users.size() >= _userLimit) {
-		std::cerr << "User limit reached" << std::endl;
-		return;
-	}
 	_users.insert(std::make_pair(user->getNickname(), user));
 }
 
@@ -61,6 +56,12 @@ std::string	Channel::getTopic() const {return _topic;}
 void	Channel::setByInvitation(bool byInvitation) {_byInvitation = byInvitation;}
 
 bool	Channel::getByInvitation() const {return _byInvitation;}
+
+bool	Channel::isFull() {
+	if (_userLimit != -1 && (long long)_users.size() >= _userLimit)
+		return true;
+	return false;
+}
 
 bool	Channel::isUser(std::string &user) {
 	if (_users.find(user) != _users.end())
