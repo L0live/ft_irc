@@ -1,9 +1,12 @@
 #include "Channel.hpp"
 #include "ft_irc.hpp"
 
-Channel::Channel() : _name(""), _userLimit(-1), _byInvitation(false) {}
+Channel::Channel() {}
 
-Channel::Channel(std::string &name) : _name(name), _userLimit(-1), _byInvitation(false) {}
+Channel::Channel(std::string &name, User *user)
+: _name(name), _topic("topic is not set"), _userLimit(-1), _byInvitation(false) {
+	_operators.insert(std::make_pair(user->getNickname(), user));
+}
 
 Channel::Channel(const Channel &src) {*this = src;}
 
@@ -22,31 +25,25 @@ Channel &Channel::operator=(const Channel &src) {
 
 Channel::~Channel() {}
 
-void	Channel::sendAllUser(const std::string &user, std::string msg) {
-	std::string		tmpMsg = user + ": " + msg;
+void	Channel::sendAllUser(const std::string &msg) {
 	for (UserMap::iterator it = _users.begin(); it != _users.end(); ++it) {
-		send(it->second->getSockfd(), tmpMsg.c_str(), tmpMsg.size(), 0);
+		send(it->second->getSockfd(), msg.c_str(), msg.size(), 0);
 	}
 	for (UserMap::iterator it = _operators.begin(); it != _operators.end(); it++) {
-		//std::string command = RPL_KICK(client, channel, target, reason);
+		send(it->second->getSockfd(), msg.c_str(), msg.size(), 0);
 	}
 }
 
-void	Channel::kickUser(const std::string &user) {
-	_users.erase(user);
-	_operators.erase(user);
-	sendAllUser(user, "kickkkkk");
+void	Channel::kick(const std::string &target, const std::string &msg) {
+	_users.erase(target);
+	_operators.erase(target);
+	sendAllUser(msg);
 }
 
-void Channel::Leave(const std::string &user)
-{
+void Channel::leave(const std::string &user, const std::string &msg) {
 	_users.erase(user);
-	_operators.erase(user);	
-	sendAllUser(user, "leave");
-#define ERR_NOTONCHANNEL(client, channel)			(": 442 " + client + " " + channel + " :You're not on that channel\r\n")
-#define RPL_PART(client, channel)					(":" + client + " PART " + channel + "\r\n")
-#define RPL_PARTMESSAGE(client, channel, message)	(":" + client + " PART " + channel + " :" + message +"\r\n")
-
+	_operators.erase(user);
+	sendAllUser(msg);
 }
 
 void	Channel::addUser(User *user) {
@@ -59,15 +56,27 @@ void	Channel::addUser(User *user) {
 
 void	Channel::setTopic(std::string &topic) {_topic = topic;}
 
-std::string	Channel::getTopic() const {return (_topic);}
+std::string	Channel::getTopic() const {return _topic;}
 
 void	Channel::setByInvitation(bool byInvitation) {_byInvitation = byInvitation;}
 
 bool	Channel::getByInvitation() const {return _byInvitation;}
 
-UserMap Channel::getUsers(){
-	return(this->_users);
+bool	Channel::isUser(std::string &user) {
+	if (_users.find(user) != _users.end())
+		return true;
+	if (_operators.find(user) != _operators.end())
+		return true;
+	return false;
 }
+
+bool	Channel::isOperator(std::string &user) {
+	if (_operators.find(user) != _operators.end())
+		return true;
+	return false;
+}
+
+bool	Channel::isEmpty() {return (_users.empty() && _operators.empty() ? true : false);}
 
 void	Channel::setPassword(std::string &password) {_password = password;}
 

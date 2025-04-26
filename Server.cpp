@@ -129,9 +129,13 @@ Server::CommandMap	Server::init_commands()
 	commands["INVITE"] = &User::invite;
 	commands["TOPIC"] = &User::topic;
 	commands["MODE"] = &User::mode;
+	// commands["WHO"] = &User::who; // liste tous les users du channel
 	commands["NICK"] = &User::setNickname;
 	commands["USER"] = &User::setUsername;
 	commands["PASS"] = &User::checkPass;
 	return commands;
 }
 
+ChannelMap	&Server::getChannels() {return _channels;}
+
+UserMap	&Server::getUsers() {return _users;}

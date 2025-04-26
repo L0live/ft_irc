@@ -38,10 +38,8 @@ public:
 	
 	void	run();
 	CommandMap	init_commands();
-	void	sendPrivateMsg(User *user, const std::string &msg, const std::string &target);
-	void	joinChannel(User *user, const std::string &channel);
-	void	addChannel(User *user, Channel *channel);
-	void	popChannel(const std::string &channel);
+	ChannelMap	&getChannels();
+	UserMap	&getUsers();
 };
 
 

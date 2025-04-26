@@ -26,7 +26,7 @@ std::string User::receiveRequest() {
 
 	memset(buffer, '\0', sizeof(buffer));
 	tmp = recv(_sockfd, buffer, sizeof(buffer) - 1, 0);
-	if (tmp <= 0) // si empty modifié pour renvoyer uniquement chaine vide
+	if (tmp <= 0) // vrmt necessaire ?
 		return ("");	
 	std::cout << "Received: " << buffer << std::endl;
 	return std::string(buffer);
@@ -50,56 +50,98 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 	}
 }
 
-void User::sendMsg(std::istringstream &request, std::string &client, Server &server){
-	(void) client;
-	(void) server;
-	//PRIVMSG(client, target, message);
-	std::string token;
-	if (request >> token) {
-		ChannelMap::iterator	it = _channels.find(token);
-		if (it == _channels.end())
+void User::sendMsg(std::istringstream &request, std::string &client, Server &server) {
+	std::string target;
+	if (!(request >> target)) // Error: no target
+		return ;
+
+	std::string msg = PRIVMSG(client, target, request.str());
+	if (target[0] == '#') {
+		ChannelMap::iterator	it = _channels.find(target);
+		if (it == _channels.end()) // Error: not in channel
 			return ;
-		//it->second->sendAllUser(_nickname, request);
+		it->second->sendAllUser(msg);
+		std::cout << "Sended: " << msg << std::endl;
+	} else {
+		UserMap &users = server.getUsers();
+		UserMap::iterator	it = users.find(target);
+		if (it == users.end()) // Error: nick not found
+			return ;
+		send(it->second->getSockfd(), msg.c_str(), msg.size(), 0);
+		std::cout << "Sended: " << msg << std::endl;
 	}
-} // TODO
+	
+}
 
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
-	(void) server;
-	std::string	token;
+	std::string	target;
 	
-	if (request >> token) {
-		std::string	msg = RPL_JOIN(client, token);
-		send(_sockfd, msg.c_str(), msg.size(), 0);
-		std::cout << "Sended: " << msg << std::endl;
+	if (!(request >> target)) // Error: no target
+		return ;
+	ChannelMap &allChannels = server.getChannels();
+	ChannelMap::iterator	it = allChannels.find(target);
+	std::string	msg = RPL_JOIN(client, target);
+	if (it == allChannels.end()) {
+		Channel *newChannel = new Channel(target, this);
+		_channels.insert(std::make_pair(target, newChannel));
+		allChannels.insert(std::make_pair(target, newChannel));
+	} else {
+		if (it->second->getByInvitation()) // Error: channel is invite only
+			return ;
+		it->second->addUser(this);
+		_channels.insert(std::make_pair(target, it->second));
 	}
-#define ERR_CHANNELISFULL(client, channel)			(": 471 " + client + " " + channel + " :Cannot join channel (+l)\r\n")
-#define ERR_INVITEONLYCHAN(client, channel)			(": 473 " + client + " " + channel + " :Cannot join channel (+i)\r\n")
-#define ERR_BADCHANNELKEY(client, channel)			(": 475 " + client + " " + channel + " :Cannot join channel (+k)\r\n")
+	send(_sockfd, msg.c_str(), msg.size(), 0);
+	std::cout << "Sended: " << msg << std::endl;
+	// #define ERR_CHANNELISFULL(client, channel)			(": 471 " + client + " " + channel + " :Cannot join channel (+l)\r\n")
+	// #define ERR_INVITEONLYCHAN(client, channel)			(": 473 " + client + " " + channel + " :Cannot join channel (+i)\r\n")
+	// #define ERR_BADCHANNELKEY(client, channel)			(": 475 " + client + " " + channel + " :Cannot join channel (+k)\r\n")
 }
 
-void User::leaveChannel(std::istringstream &request, std::string &client, Server &server)
-{
-	(void) client;
-	(void) server;
-	std::string	titleChannel;
-	request >> titleChannel;
+void User::leaveChannel(std::istringstream &request, std::string &client, Server &server) {
+	std::string	target;
+	if (!(request >> target)) // Error: no target
+		return ;
+	ChannelMap::iterator it = _channels.find(target);
+	if (it == _channels.end()) // Error: not in channel
+		return ;
 
-	ChannelMap::iterator it = this->_channels.find(titleChannel);
-	if (it != _channels.end())
-		it->second->Leave(this->getNickname());
+	std::string msg;
+	if (request >> msg)
+		msg = RPL_PARTMESSAGE(client, target, msg);
+	else
+		msg = RPL_PART(client, target);
+	it->second->leave(_nickname, msg);
+	if (it->second->isEmpty()) {
+		server.getChannels().erase(it->first);
+		delete it->second;
+		_channels.erase(it);
+	}
+	// #define ERR_NOTONCHANNEL(client, channel)			(": 442 " + client + " " + channel + " :You're not on that channel\r\n")
 }
 
-void User::kick(std::istringstream &request, std::string &client, Server &server) // We must have greatest error handling
-{
-	(void) client;
+void User::kick(std::istringstream &request, std::string &client, Server &server) {
 	(void) server;
 	std::string channel;
-	std::string token;
-	if (request >> channel) {
-		request >> token;
-		_channels.find(channel)->second->kickUser(token);
-	}
+	if (!(request >> channel)) // Error: no channel
+		return ;
+	ChannelMap::iterator it = _channels.find(channel);
+	if (it == _channels.end()) // Error: not in channel
+		return ;
+	if (!it->second->isOperator(_nickname)) // Error: not operator
+		return ;
+	std::string target;
+	if (!(request >> target)) // Error: no target
+		return ;
+	if (!it->second->isUser(target)) // Error: target not in channel
+		return ;
+	std::string msg;
+	if (request >> msg) // No message: Error ???
+		msg = RPL_KICK(client, channel, target, msg);
+	else
+		msg = RPL_KICK(client, channel, target, "");
+	it->second->kick(target, msg);
 }
 
 void User::invite(std::istringstream &request, std::string &client, Server &server)

@@ -22,15 +22,15 @@ private:
 
 	Channel();
 public:
-	Channel(std::string &name);
+	Channel(std::string &name, User *user);
 	Channel(const Channel &src);
 	Channel	&operator=(const Channel &src);
 	~Channel();
 
-	void	sendAllUser(const std::string &user, std::string msg);
+	void	sendAllUser(const std::string &msg);
 	// Operator
-	void    kickUser(const std::string &user);
-	void    Leave(const std::string &user);
+	void    kick(const std::string &target, const std::string &msg);
+	void    leave(const std::string &user, const std::string &msg);
 	void	addUser(User *user);
 	// TOPIC
 	void	setTopic(std::string &topic);
@@ -40,7 +40,9 @@ public:
 	bool	getByInvitation() const;
 	// void	setRestrictions(type &restrictions); ???
 	// void	removeRestrictions(); ???
-	UserMap	getUsers();
+	bool	isUser(std::string &user);
+	bool	isOperator(std::string &user);
+	bool	isEmpty();
 	void	setPassword(std::string &password);
 	void	removePassword();
 	void	giveOperatorStatus(std::string &user);
