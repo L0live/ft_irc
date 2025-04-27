@@ -77,13 +77,6 @@ void	Server::run() {
 
 	std::vector<struct pollfd> fds;
 	fds.push_back(initPollfd(_sockfd));
-
-/*
-	On envoie un message de bienvenue au client
-	std::string welcome_msg = RPL_WELCOME(_nickname, CLIENT(_nickname, _username));
-	send(_sockfd, welcome_msg.c_str(), welcome_msg.size(), 0);
-*/
-
 	while (true) {
 		if (poll(&fds[0], fds.size(), -1) <= 0)
 			continue;
@@ -96,7 +89,7 @@ void	Server::run() {
 						continue;
 					}
 					fds.push_back(initPollfd(user->getSockfd()));
-					_users.insert(std::make_pair(user->getNickname(), user));
+					_users.insert(std::make_pair(user->getNickname(), user)); // TODO nickname pas encore recu (stack d'attente ?)
 					_usersfd.insert(std::make_pair(user->getSockfd(), user));
 				} else {
 					User* user = _usersfd.find(fds[i].fd)->second;
@@ -134,6 +127,22 @@ Server::CommandMap	Server::init_commands()
 	commands["USER"] = &User::setUsername;
 	commands["PASS"] = &User::checkPass;
 	return commands;
+}
+
+std::string	Server::getPassword() const {return _password;}
+
+Channel	*Server::getChannel(std::string &name) {
+	ChannelMap::iterator it = _channels.find(name);
+	if (it != _channels.end())
+		return it->second;
+	return NULL;
+}
+
+User	*Server::getUser(std::string &name) {
+	UserMap::iterator it = _users.find(name);
+	if (it != _users.end())
+		return it->second;
+	return NULL;
 }
 
 ChannelMap	&Server::getChannels() {return _channels;}

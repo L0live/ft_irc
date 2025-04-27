@@ -4,7 +4,7 @@
 Channel::Channel() {}
 
 Channel::Channel(std::string &name, User *user)
-: _name(name), _mode("+itkol"), _userLimit(-1), _byInvitation(false) {
+: _name(name), _topicRestriction(true), _mode("+t"), _userLimit(-1), _byInvitation(false) {
 	_operators.insert(std::make_pair(user->getNickname(), user));
 }
 
@@ -15,11 +15,13 @@ Channel &Channel::operator=(const Channel &src) {
 		return *this;
 	_name = src._name;
 	_password = src._password;
-	_topic = src._topic; 
+	_topic = src._topic;
+	_topicRestriction = src._topicRestriction;
+	_mode = src._mode;
 	_users = src._users;
 	_operators = src._operators;
-	_userLimit = src._userLimit; 
-	_byInvitation = src._byInvitation;  
+	_userLimit = src._userLimit;
+	_byInvitation = src._byInvitation;
 	return *this;
 }
 
@@ -27,10 +29,10 @@ Channel::~Channel() {}
 
 void	Channel::sendAllUser(const std::string &msg) {
 	for (UserMap::iterator it = _users.begin(); it != _users.end(); ++it) {
-		send(it->second->getSockfd(), msg.c_str(), msg.size(), 0);
+		send(it->second->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
 	}
 	for (UserMap::iterator it = _operators.begin(); it != _operators.end(); it++) {
-		send(it->second->getSockfd(), msg.c_str(), msg.size(), 0);
+		send(it->second->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
 	}
 }
 
@@ -40,9 +42,9 @@ void	Channel::kick(const std::string &target) {
 }
 
 void Channel::leave(const std::string &user, const std::string &msg) {
+	sendAllUser(msg);
 	_users.erase(user);
 	_operators.erase(user);
-	sendAllUser(msg);
 }
 
 void	Channel::addUser(User *user) {
@@ -55,7 +57,11 @@ std::string	Channel::getTopic() const {return _topic;}
 
 void	Channel::setByInvitation(bool byInvitation) {_byInvitation = byInvitation;}
 
-bool	Channel::getByInvitation() const {return _byInvitation;}
+bool	Channel::isByInvitation() const {return _byInvitation;}
+
+void	Channel::setTopicRestriction(bool topicRestriction) {_topicRestriction = topicRestriction;}
+
+bool	Channel::isTopicDefRestricted() const {return _topicRestriction;}
 
 std::string	Channel::getMode() const {return _mode;}
 
@@ -83,20 +89,36 @@ bool	Channel::isOperator(std::string &user) {
 
 bool	Channel::isEmpty() {return (_users.empty() && _operators.empty() ? true : false);}
 
+bool	Channel::isPassworded() const {return !_password.empty();}
+
 void	Channel::setPassword(std::string &password) {_password = password;}
 
-void	Channel::removePassword() {_password = "";}
+std::string	Channel::getPassword() const {return _password;}
 
-void	Channel::giveOperatorStatus(std::string &user) {
-	_users.erase(user);
-	_operators.insert(std::make_pair(user, _users.find(user)->second));
+void	Channel::handleOperatorStatus(bool opStatus, std::string &user) {
+	if (opStatus) {
+		UserMap::iterator it = _users.find(user);
+		if (it != _users.end()) {
+			_operators.insert(std::make_pair(it->first, it->second));
+			_users.erase(it);
+		}
+	} else {
+		UserMap::iterator it = _operators.find(user);
+		if (it != _operators.end()) {
+			_users.insert(std::make_pair(it->first, it->second));
+			_operators.erase(it);
+		}
+	}
 }
 
-void	Channel::removeOperatorStatus(std::string &user) {
-	_users.insert(std::make_pair(user, _operators.find(user)->second));
-	_operators.erase(user);
+void	Channel::setUserLimit(bool unset, std::string &userLimit) {
+	if (unset) {
+		_userLimit = -1;
+		return ;
+	}
+	char *endptr;
+	int limit = strtol(userLimit.c_str(), &endptr, 10);
+	if (*endptr != '\0' || limit < 0) // Error: bad user limit // is silent (standard RFC)
+		return ;
+	_userLimit = limit;
 }
-
-void	Channel::setUserLimit(long long &userLimit) {_userLimit = userLimit;}
-
-void	Channel::removeUserLimit() {_userLimit = -1;}

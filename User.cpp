@@ -4,15 +4,12 @@
 User::User() {}
 
 User::User(int servSockfd) {
-	std::cout << "Waiting for connections..." << std::endl;
 	socklen_t addr_len = sizeof(_addr);
 	_sockfd = accept(servSockfd, (sockaddr *)&_addr, &addr_len); // on attend jusqu'a ce que le client se connecte
 	if (_sockfd < 0)
 		return ;
 
 	std::cout << "Client connected: " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
-
-
 }
 
 User::~User() {
@@ -45,8 +42,13 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 		std::string	token;
 		if (requestLine >> token) {
 			Server::CommandMap::iterator	it = commands.find(token);
-			if (it != commands.end())
-				(this->*(it->second))(requestLine, client, server);
+			if (it != commands.end()) {
+				try {(this->*(it->second))(requestLine, client, server);
+				} catch(const std::exception& e) {
+					std::string msg = e.what();
+					send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
+				}
+			}
 		}
 		std::getline(request, tokenLine);
 	}
@@ -54,255 +56,220 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 
 void User::sendMsg(std::istringstream &request, std::string &client, Server &server) {
 	std::string target;
-	if (!(request >> target)) // Error: no target
-		return ;
+	request >> target; // Error gerer par Hexchat
 
-	std::string msg = PRIVMSG(client, target, request.str());
+	std::string msg = request.str(); // PRIVMSG(client, target, "");
 	if (target[0] == '#') {
-		ChannelMap::iterator	it = _channels.find(target);
-		if (it == _channels.end()) // Error: not in channel
-			return ;
-		it->second->sendAllUser(msg);
+		Channel *channel = server.getChannel(target);
+		if (channel == NULL) // Error: no such channel
+			throw std::runtime_error(ERR_NOSUCHCHANNEL(client, target));
+		channel->sendAllUser(msg);
 		std::cout << "Sended: " << msg << std::endl;
 	} else {
-		UserMap &users = server.getUsers();
-		UserMap::iterator	it = users.find(target);
-		if (it == users.end()) // Error: nick not found
-			return ;
-		send(it->second->getSockfd(), msg.c_str(), msg.size(), 0);
+		User *user = server.getUser(target);
+		if (user == NULL) // Error: no such user
+			throw std::runtime_error(ERR_NOSUCHNICK(client, target));
+		send(user->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
 		std::cout << "Sended: " << msg << std::endl;
 	}
 }
 
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
-	std::string	target;
-	
-	if (!(request >> target)) // Error: no target (params) // c check par Hexchat
-		return ;
-	if (target[0] != '#') // Error: not a channel
-		return ;
-	ChannelMap &allChannels = server.getChannels();
-	ChannelMap::iterator	it = allChannels.find(target);
-	std::string	msg = RPL_JOIN(client, target);
-	if (it == allChannels.end()) {
-		Channel *newChannel = new Channel(target, this);
-		_channels.insert(std::make_pair(target, newChannel));
-		allChannels.insert(std::make_pair(target, newChannel));
+	std::string	channelName;
+	request >> channelName; // Error gerer par Hexchat
+
+	Channel *channel = server.getChannel(channelName);
+	if (!channel) {
+		channel = new Channel(channelName, this);
+		_channels.insert(std::make_pair(channelName, channel));
+		server.getChannels().insert(std::make_pair(channelName, channel));
 	} else {
-		if (it->second->getByInvitation()) // Error: channel is invite only
-			return ;
-		if (it->second->isFull()) // Error: channel is full
-			return ;
-		it->second->addUser(this);
-		_channels.insert(std::make_pair(target, it->second));
+		if (channel->isByInvitation()/* && channel->isInvited(_nickname)*/) // Error: channel is invite only (stack d'attente ?)
+			throw std::runtime_error(ERR_INVITEONLYCHAN(client, channelName));
+		if (channel->isFull()) // Error: channel is full
+			throw std::runtime_error(ERR_CHANNELISFULL(client, channelName));
+		if (channel->isPassworded()) {
+			std::string password;
+			request >> password; // Error gerer par Hexchat
+			if (password != channel->getPassword()) // Error: password incorrect
+				throw std::runtime_error(ERR_BADCHANNELKEY(client, channelName));
+		}
+		channel->addUser(this);
+		_channels.insert(std::make_pair(channelName, channel));
 	}
-	it->second->sendAllUser(msg);
+	std::string	msg = RPL_JOIN(client, channelName);
+	channel->sendAllUser(msg);
 	std::cout << "Sended: " << msg << std::endl;
-	// #define ERR_CHANNELISFULL(client, channel)			(": 471 " + client + " " + channel + " :Cannot join channel (+l)\r\n")
-	// #define ERR_INVITEONLYCHAN(client, channel)			(": 473 " + client + " " + channel + " :Cannot join channel (+i)\r\n")
-	// #define ERR_BADCHANNELKEY(client, channel)			(": 475 " + client + " " + channel + " :Cannot join channel (+k)\r\n")
 }
 
 void User::leaveChannel(std::istringstream &request, std::string &client, Server &server) {
-	std::string	target;
-	if (!(request >> target)) // Error: no target (params)
-		return ;
-	ChannelMap::iterator it = _channels.find(target);
-	if (it == _channels.end()) // Error: not in channel
-		return ;
+	std::string	channelName;
+	request >> channelName; // Error gerer par Hexchat
+	Channel *channel = server.getChannel(channelName);
+	if (channel == NULL) // Error: no such channel
+		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+	if (!channel->isUser(_nickname)) // Error: not in channel
+		throw std::runtime_error(ERR_NOTONCHANNEL(client, channelName));
 
 	std::string msg;
 	if (request >> msg)
-		msg = RPL_PARTMESSAGE(client, target, msg);
+		msg = RPL_PARTMESSAGE(client, channelName, msg);
 	else
-		msg = RPL_PART(client, target);
-	it->second->leave(_nickname, msg);
-	if (it->second->isEmpty()) {
-		server.getChannels().erase(it->first);
-		delete it->second;
-		_channels.erase(it);
+		msg = RPL_PART(client, channelName);
+	channel->leave(_nickname, msg);
+	_channels.erase(channelName);
+	if (channel->isEmpty()) {
+		server.getChannels().erase(channelName);
+		delete channel;
 	}
-	// #define ERR_NOTONCHANNEL(client, channel)			(": 442 " + client + " " + channel + " :You're not on that channel\r\n")
 }
 
 void User::kick(std::istringstream &request, std::string &client, Server &server) {
 	(void) server;
-	std::string channel;
-	if (!(request >> channel)) // Error: no channel (params)
-		return ;
-	ChannelMap::iterator it = _channels.find(channel);
-	if (it == _channels.end()) // Error: not in channel
-		return ;
-	if (!it->second->isOperator(_nickname)) // Error: not operator
-		return ;
+	std::string channelName;
+	request >> channelName; // Error gerer par Hexchat
+	Channel *channel = server.getChannel(channelName);
+	if (channel == NULL) // Error: no such channel
+		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+	if (!channel->isOperator(_nickname)) // Error: not operator
+		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
 	std::string target;
-	if (!(request >> target)) // Error: no target (params)
-		return ;
-	if (!it->second->isUser(target)) // Error: target not in channel
-		return ;
+	request >> target; // Error gerer par Hexchat
+	if (!channel->isUser(target)) // Error: target not in channel
+		throw std::runtime_error(ERR_USERNOTINCHANNEL(client, target, channelName));
 	std::string msg;
-	if (!(request >> msg)) // No message: Error ???
-		return ;
-	msg = RPL_KICK(client, channel, target, msg);
-	it->second->kick(target);
-	it->second->sendAllUser(msg);
+	request >> msg; // Error gerer par Hexchat
+	msg = RPL_KICK(client, channelName, target, msg);
+	channel->kick(target);
+	channel->sendAllUser(msg);
 }
 
 void	User::invite(std::istringstream &request, std::string &client, Server &server) {
-	std::string target;
-	if (!(request >> target)) // Error: no target (params) // c check par Hexchat
-		return ;
-	UserMap &users = server.getUsers();
-	UserMap::iterator itTarget = users.find(target);
-	if (itTarget == users.end()) // Error: target not found
-		return ;
-	std::string channel;
-	if (!(request >> channel)) // Error: no channel (params) // c gerer par Hexchat
-		return ;
-	ChannelMap::iterator itChannel = _channels.find(channel);
-	if (itChannel == _channels.end()) // Error: not in channel
-		return ;
-	if (!itChannel->second->isOperator(_nickname)) // Error: not operator
-		return ;
-	if (itChannel->second->isUser(target)) // Error: target already in channel
-		return ;
-	if (itChannel->second->isFull()) // Error: channel is full
-		return ;
-	itChannel->second->addUser(itTarget->second);
-	std::string msg = RPL_INVITESNDR(client, target, channel);
-	send(itTarget->second->getSockfd(), msg.c_str(), msg.size(), 0);
-	msg = RPL_INVITERCVR(client, target, channel);
-	itChannel->second->sendAllUser(msg);
-	// #define ERR_ALREADYREGISTRED(client)				(": 462 " + client + " ::Unauthorized command (already registered)\r\n")
+	std::string targetName;
+	request >> targetName; // Error gerer par Hexchat
+	User *target = server.getUser(targetName);
+	if (target == NULL) // Error: target not found
+		throw std::runtime_error(ERR_NOSUCHNICK(client, targetName));
+	std::string channelName;
+	request >> channelName; // Error gerer par Hexchat
+	Channel *channel = server.getChannel(channelName);
+	if (channel == NULL) // Error: no such channel
+		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+	if (!channel->isOperator(_nickname)) // Error: not operator
+		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
+	if (channel->isUser(targetName)) // Error: target already in channel
+		throw std::runtime_error(ERR_USERONCHANNEL(targetName, channelName));
+	if (channel->isFull()) // Error: channel is full
+		throw std::runtime_error(ERR_CHANNELISFULL(client, channelName));
+	channel->addUser(target);
+	std::string msg = RPL_INVITESNDR(client, targetName, channelName);
+	send(target->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
+	msg = RPL_INVITERCVR(client, targetName, channelName);
+	channel->sendAllUser(msg);
 }
 
 void User::topic(std::istringstream &request, std::string &client, Server &server) {
 	(void) server;
-	std::string channel;
-	if (!(request >> channel)) // Error: no channel (params) // c gerer par Hexchat
-		return ;
-	ChannelMap::iterator itChannel = _channels.find(channel);
-	if (itChannel == _channels.end()) // Error: not in channel // c gerer par Hexchat
-		return ;
+	std::string channelName;
+	request >> channelName; // Error gerer par Hexchat
+	Channel *channel = server.getChannel(channelName);
+	if (channel == NULL) // Error: no such channel
+		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+
 	std::string msg;
 	std::string topic;
 	if (!(request >> topic)) {
-		topic = itChannel->second->getTopic();
+		topic = channel->getTopic();
 		if (topic.empty())
-			msg = RPL_NOTOPIC(client, channel);
+			msg = RPL_NOTOPIC(client, channelName);
 		else
-			msg = RPL_SEETOPIC(client, channel, topic);
-		send(_sockfd, msg.c_str(), msg.size(), 0);
+			msg = RPL_SEETOPIC(client, channelName, topic);
+		send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
 		return ;
 	}
-	if (!itChannel->second->isOperator(_nickname)) // Error: not operator
-		return ;
-	itChannel->second->setTopic(topic);
-	msg = RPL_TOPIC(client, channel, topic);
-	itChannel->second->sendAllUser(msg);
+	if (channel->isTopicDefRestricted() && !channel->isOperator(_nickname)) // Error: not operator
+		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
+	channel->setTopic(topic);
+	msg = RPL_TOPIC(client, channelName, topic);
+	channel->sendAllUser(msg);
 }
 
 void User::mode(std::istringstream &request, std::string &client, Server &server) {
-	(void) server;
-	std::string channel;
-	if (!(request >> channel)) // Error: no channel (params) // c gerer par Hexchat
-		return ;
-	ChannelMap::iterator itChannel = _channels.find(channel);
-	if (itChannel == _channels.end()) // Error: not in channel // c gerer par Hexchat
-		return ;
+	std::string channelName;
+	request >> channelName; // Error gerer par Hexchat
+	Channel *channel = server.getChannel(channelName);
+	if (channel == NULL) // Error: no such channel
+		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+	std::string msg;
 	std::string mode;
 	if (!(request >> mode)) { // Liste des modes
-		std::string msg = RPL_CHANNELMODEIS(client, channel, itChannel->second->getMode());
-		send(_sockfd, msg.c_str(), msg.size(), 0);
+		msg = RPL_CHANNELMODEIS(client, channelName, channel->getMode());
+		send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
 		return ;
 	}
-	if (!itChannel->second->isOperator(_nickname)) // Error: not operator
-		return ;
+	if (!channel->isOperator(_nickname)) // Error: not operator
+		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
 	bool define = true;
+	std::string token;
 	for (std::string::iterator it = mode.begin(); it != mode.end(); it++) {
-		switch (*it) {
-			case '+':
+		try {
+			if (*it == '+')
 				define = true;
-				break;
-			case '-':
+			else if (*it == '-')
 				define = false;
-				break;
-			case 'i':
-				if (define)
-					itChannel->second->setByInvitation(true);
-				else
-					itChannel->second->setByInvitation(false);
-				break;
-			// case 't':
-				// Topic command restrictions
-				// break;
-			case 'k':
-				if (define) {
-					std::string password;
-					if (!(request >> password)) // Error: no password (params)
-						return ;
-					itChannel->second->setPassword(password);
-				} else
-					itChannel->second->removePassword();
-				break;
-			case 'o': {
-					std::string target;
-					if (!(request >> target)) // Error: no target (params)
-						return ;
-					if (!itChannel->second->isUser(target)) // Error: target not in channel
-						return ;
-					if (define) {
-						if (itChannel->second->isOperator(target)) // target already operator (No error)
-							return ;
-						itChannel->second->giveOperatorStatus(target);
-					} else {
-						if (!itChannel->second->isOperator(target)) // target not operator (No error)
-							return ;
-						itChannel->second->removeOperatorStatus(target);
-					}
-				}
-				break;
-			case 'l':
-				if (define) {
-					std::string userLimit;
-					if (!(request >> userLimit)) // Error: no user limit (params)
-						return ;
-					char *endptr;
-					long long limit = strtoll(userLimit.c_str(), &endptr, 10);
-					if (*endptr != '\0' || limit < 0) // Error: bad user limit
-						return ;
-					itChannel->second->setUserLimit(limit);
-				} else
-					itChannel->second->removeUserLimit();
-				break;
-			default: // Error: unknown mode
-				break;
+			else if (*it == 'o')
+				channel->setByInvitation(define);
+			else if (*it == 'i')
+				channel->setTopicRestriction(define);
+			else if (*it == 'k') {
+				token = "";
+				if (define && !(request >> token)) // Error: no password (params) // is silent (standard RFC)
+					continue;
+				channel->setPassword(token);
+			} else if (*it == 't') {
+				if (!(request >> token)) // Error: no target (params) // is silent (standard RFC)
+					continue;
+				if (!channel->isUser(token)) // Error: target not in channel
+					throw std::runtime_error(ERR_USERNOTINCHANNEL(client, token, channelName));
+				channel->handleOperatorStatus(define, token);
+			} else if (*it == 'l') {
+				if (define && !(request >> token)) // Error: no user limit (params) // is silent (standard RFC)
+					continue;
+				channel->setUserLimit(!define, token);
+			} else // Error: unknown mode
+				throw std::runtime_error(ERR_UNKNOWNMODE(client, *it));
+		} catch (std::exception &e) {
+			msg = e.what();
+			send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
 		}
+		channel->setMode(mode);
+		msg = RPL_MODE(client, channelName, mode, token); // TODO token -> tokens list
+		channel->sendAllUser(msg);
 	}
-	
-	// #define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " " + name + "\r\n")
-	// #define RPL_CHANNELMODEIS(client, channel, modes) 	(": 324 " + client + " " + channel + " " + modes + "\r\n")
-	// #define ERR_UNKNOWNMODE(client, mode)				(": 472 " + client + " " + mode + " :is unknown mode char to me\r\n")
-	// #define ERR_NOCHANMODES(channel)					(": 477 " + channel + " :Channel doesn't support modes\r\n")
 }
 
 void User::checkPass(std::istringstream &request, std::string &client, Server &server) {
-	(void) request;
-	(void) client;
-	(void) server;
+	std::string password;
+	request >> password; // Error gerer par Hexchat
+	if (password != server.getPassword()) // Error: password incorrect
+		throw std::runtime_error(ERR_PASSWDMISMATCH(client));
 }
 
 void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
 	(void) client;
 	(void) server;
-	request >> _username;
+	request >> _username; // Error gerer par Hexchat
 }
 
 void User::setNickname(std::istringstream &request, std::string &client, Server &server) {
-	(void) client;
-	(void) server;
-	request >> _nickname;
+	std::string nick;
+	request >> nick; // Error gerer par Hexchat
+	std::cout << "Set nickname: " << nick << std::endl;
+	if (server.getUser(nick)) // Error: nickname already in use
+		throw std::runtime_error(ERR_NICKNAMEINUSE(client, nick));
+	_nickname = nick;
+	(void) client; // bzr, on l'utilise [-Werror=unused-parameter]
 }
 
 std::string User::getUsername() const {return _username;}

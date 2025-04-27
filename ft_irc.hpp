@@ -38,7 +38,7 @@
 // Error messages
 #define ERR_TOOMUCHPARAMS(client, cmd)				(client + " " + cmd + " :Too much parameters\r\n")
 #define ERR_USERONCHANNEL(nick, channel)			(": 443 " + nick + " " + channel + " :is already on channel\r\n")
-#define ERR_NOSUCHNICK(client, nickname) 			(": 401 " + client + " " + nickname + " :No such nick/channel\r\n")
+#define ERR_NOSUCHNICK(client, nickname) 			(": 401 " + client + " " + nickname + " :No such nick\r\n")
 #define ERR_NOSUCHNICKCHAN(server, client, nickname)(":" + server + " 401 " + client + " " + nickname + " :No such nick/channel\r\n")
 #define ERR_NOSUCHCHANNEL(client, channel)			(": 403 " + client + " " + channel + " :No such channel\r\n")
 #define ERR_CANNOTSENDTOCHAN(client, channel)		(": 404 " + client + " " + channel + " :Cannot send to channel\r\n")

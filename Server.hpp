@@ -38,6 +38,9 @@ public:
 	
 	void	run();
 	CommandMap	init_commands();
+	std::string	getPassword() const;
+	Channel	*getChannel(std::string &name);
+	User	*getUser(std::string &name);
 	ChannelMap	&getChannels();
 	UserMap	&getUsers();
 };

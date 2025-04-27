@@ -11,15 +11,15 @@ typedef std::map<std::string, User *>		UserMap;
 
 class Channel {
 private:
-	std::string _name;
-	std::string _password;
-	std::string _topic;
-	//type  _restrictions; ???
-	std::string _mode;
+	std::string	_name;
+	std::string	_password;
+	std::string	_topic;
+	bool		_topicRestriction;
+	std::string	_mode;
 	UserMap		_users;
 	UserMap		_operators;
-	long long   _userLimit;
-	bool        _byInvitation;
+	int			_userLimit;
+	bool		_byInvitation;
 
 	Channel();
 public:
@@ -38,21 +38,20 @@ public:
 	std::string	getTopic() const;
 	// MODE
 	void	setByInvitation(bool byInvitation);
-	bool	getByInvitation() const;
-	// void	setRestrictions(type &restrictions); ???
-	// void	removeRestrictions(); ???
+	bool	isByInvitation() const;
+	void	setTopicRestriction(bool topicRestriction);
+	bool	isTopicDefRestricted() const;
 	std::string	getMode() const;
 	void	setMode(std::string &mode);
 	bool	isFull();
 	bool	isUser(std::string &user);
 	bool	isOperator(std::string &user);
 	bool	isEmpty();
+	bool	isPassworded() const;
 	void	setPassword(std::string &password);
-	void	removePassword();
-	void	giveOperatorStatus(std::string &user);
-	void	removeOperatorStatus(std::string &user);
-	void	setUserLimit(long long &userLimit);
-	void	removeUserLimit();
+	std::string	getPassword() const;
+	void	handleOperatorStatus(bool opStatus, std::string &user);
+	void	setUserLimit(bool unset, std::string &userLimit);
 };
 
 
