@@ -25,7 +25,7 @@ std::string User::receiveRequest() {
 	int		tmp;
 
 	memset(buffer, '\0', sizeof(buffer));
-	tmp = recv(_sockfd, buffer, sizeof(buffer) - 1, 0);
+	tmp = recv(_sockfd, buffer, sizeof(buffer) - 1, SOCK_NONBLOCK);
 	if (tmp <= 0) // vrmt necessaire ?
 		return ("");	
 	std::cout << "Received: " << buffer << std::endl;
@@ -127,7 +127,6 @@ void User::leaveChannel(std::istringstream &request, std::string &client, Server
 }
 
 void User::kick(std::istringstream &request, std::string &client, Server &server) {
-	(void) server;
 	std::string channelName;
 	request >> channelName; // Error gerer par Hexchat
 	Channel *channel = server.getChannel(channelName);
@@ -142,8 +141,8 @@ void User::kick(std::istringstream &request, std::string &client, Server &server
 	std::string msg;
 	request >> msg; // Error gerer par Hexchat
 	msg = RPL_KICK(client, channelName, target, msg);
-	channel->kick(target);
 	channel->sendAllUser(msg);
+	channel->kick(target);
 }
 
 void	User::invite(std::istringstream &request, std::string &client, Server &server) {
