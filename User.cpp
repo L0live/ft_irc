@@ -10,6 +10,7 @@ User::User(int servSockfd) {
 		return ;
 
 	std::cout << "Client connected: " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
+	_registrationState = PASS;
 }
 
 User::~User() {
@@ -254,12 +255,17 @@ void User::checkPass(std::istringstream &request, std::string &client, Server &s
 	request >> password; // Error gerer par Hexchat
 	if (password != server.getPassword()) // Error: password incorrect
 		throw std::runtime_error(ERR_PASSWDMISMATCH(client));
+	_registrationState = NICK;
 }
 
 void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
-	(void) client;
-	(void) server;
 	request >> _username; // Error gerer par Hexchat
+	if (_registrationState == USER) {
+		std::string msg = RPL_WELCOME(_nickname, client);
+		send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
+		server.getUsers().insert(std::make_pair(_nickname, this));
+		_registrationState = REGISTER;
+	}
 }
 
 void User::setNickname(std::istringstream &request, std::string &client, Server &server) {
@@ -269,6 +275,8 @@ void User::setNickname(std::istringstream &request, std::string &client, Server 
 	if (server.getUser(nick)) // Error: nickname already in use
 		throw std::runtime_error(ERR_NICKNAMEINUSE(client, nick));
 	_nickname = nick;
+	if (_registrationState == NICK)
+		_registrationState = USER;
 	(void) client; // bzr, on l'utilise [-Werror=unused-parameter]
 }
 

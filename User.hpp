@@ -10,6 +10,7 @@ class Channel;
 class Server;
 
 typedef std::map<std::string, Channel *>	ChannelMap;
+typedef enum {PASS, NICK, USER, REGISTER} RegistrationState;
 
 class User {
 protected:
@@ -17,6 +18,7 @@ protected:
 	std::string _nickname;
     sockaddr_in _addr;
     int         _sockfd;
+	RegistrationState _registrationState;
 
 	ChannelMap	_channels;
 
