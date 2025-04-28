@@ -2,18 +2,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch IRCServ",
+            "name": "Debug IRC Server",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/ircserv", // Assurez-vous que ce chemin est correct
-            "args": [
-                "6667",
-                "a"
-            ],
+            "program": "${workspaceFolder}/ircserv",
+            "args": ["6667", "a"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
-            "externalConsole": true, // Utilisez false si vous préférez le terminal intégré
+            "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
                 {
@@ -22,7 +19,11 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "build" // Ajoutez cette ligne pour lancer la tâche de build avant le débogage
+            "preLaunchTask": "build",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "logging": {
+                "engineLogging": true
+            }
         }
     ]
 }
