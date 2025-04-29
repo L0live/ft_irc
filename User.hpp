@@ -5,6 +5,7 @@
 #include 	<map>
 #include 	<netinet/in.h>
 #include	<sstream>
+#include	<fcntl.h>
 
 class Channel;
 class Server;
@@ -28,6 +29,7 @@ public:
 	virtual ~User();
 
 	std::string	receiveRequest();
+	void	sendRequest(std::string msg);
 	void	interpretRequest(std::istringstream &request, Server &server);
 	void	sendMsg(std::istringstream &request, std::string &client, Server &server);
 	void	joinChannel(std::istringstream &request, std::string &client, Server &server);
@@ -41,6 +43,7 @@ public:
 	void	topic(std::istringstream &request, std::string &client, Server &server);
 	// MODE
 	void	mode(std::istringstream &request, std::string &client, Server &server);
+	void	who(std::istringstream &request, std::string &client, Server &server);
 
 	void	checkPass(std::istringstream &request, std::string &client, Server &server);
 	void	setUsername(std::istringstream &request, std::string &client, Server &server);

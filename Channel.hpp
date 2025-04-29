@@ -28,7 +28,8 @@ public:
 	Channel	&operator=(const Channel &src);
 	~Channel();
 
-	void	sendAllUser(const std::string &msg);
+	void	sendAllUser(std::string msg, std::string *nick);
+	std::string	who();
 	// Operator
 	void    kick(const std::string &target);
 	void    leave(const std::string &user, const std::string &msg);
@@ -53,7 +54,4 @@ public:
 	void	handleOperatorStatus(bool opStatus, std::string &user);
 	void	setUserLimit(bool unset, std::string &userLimit);
 };
-
-
-
 #endif

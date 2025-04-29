@@ -27,13 +27,31 @@ Channel &Channel::operator=(const Channel &src) {
 
 Channel::~Channel() {}
 
-void	Channel::sendAllUser(const std::string &msg) {
+void	Channel::sendAllUser(std::string msg, std::string *nick) {
 	for (UserMap::iterator it = _users.begin(); it != _users.end(); ++it) {
-		send(it->second->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
+		if (nick && *nick == it->first)
+			continue;
+		it->second->sendRequest(msg);
 	}
 	for (UserMap::iterator it = _operators.begin(); it != _operators.end(); it++) {
-		send(it->second->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
+		if (nick && *nick == it->first)
+			continue;
+		it->second->sendRequest(msg);
 	}
+	(void) nick;
+}
+
+std::string Channel::who() {
+	std::string	nicknames;
+	for (UserMap::iterator it = _operators.begin() ; it != _operators.end(); it++)
+	{
+		nicknames += "@" + it->first + " ";
+	}
+	for (UserMap::iterator it = _users.begin() ; it != _users.end(); it++)
+	{
+		nicknames += it->first + " ";
+	}
+	return (nicknames);	
 }
 
 void	Channel::kick(const std::string &target) {
@@ -42,7 +60,7 @@ void	Channel::kick(const std::string &target) {
 }
 
 void Channel::leave(const std::string &user, const std::string &msg) {
-	sendAllUser(msg);
+	sendAllUser(msg, NULL);
 	_users.erase(user);
 	_operators.erase(user);
 }

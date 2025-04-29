@@ -8,7 +8,7 @@ User::User(int servSockfd) {
 	_sockfd = accept(servSockfd, (sockaddr *)&_addr, &addr_len); // on attend jusqu'a ce que le client se connecte
 	if (_sockfd < 0)
 		return ;
-
+	fcntl(_sockfd, F_SETFL, O_NONBLOCK);
 	std::cout << "Client connected: " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
 	_registrationState = PASS;
 }
@@ -25,11 +25,21 @@ std::string User::receiveRequest() {
 	int		tmp;
 
 	memset(buffer, '\0', sizeof(buffer));
-	tmp = recv(_sockfd, buffer, sizeof(buffer) - 1, SOCK_NONBLOCK);
+	tmp = recv(_sockfd, buffer, sizeof(buffer) - 1, 0);
 	if (tmp <= 0) // vrmt necessaire ?
 		return ("");	
 	std::cout << "Received: " << buffer << std::endl;
 	return std::string(buffer);
+}
+
+void	User::sendRequest(std::string msg){
+	
+	//!DEBUG
+	std::cout << "void	sendRequest() " << std::endl;
+	std::cout << "\t sendRequest() : " << msg << std::endl;
+	//!
+
+	send(_sockfd, msg.c_str(), msg.size(), MSG_NOSIGNAL);
 }
 
 void User::interpretRequest(std::istringstream &request, Server &server) {
@@ -44,10 +54,13 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 		if (requestLine >> token) {
 			Server::CommandMap::iterator	it = commands.find(token);
 			if (it != commands.end()) {
-				try {(this->*(it->second))(requestLine, client, server);
+				try {
+					if (token != "PASS" && token != "NICK" && token != "USER" && _registrationState != REGISTER)
+						throw std::runtime_error(ERR_NOTREGISTERED());
+					(this->*(it->second))(requestLine, client, server);
 				} catch(const std::exception& e) {
-					std::string msg = e.what();
-					send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
+					//if (token == "PASS")
+					sendRequest(e.what());
 				}
 			}
 		}
@@ -59,19 +72,23 @@ void User::sendMsg(std::istringstream &request, std::string &client, Server &ser
 	std::string target;
 	request >> target; // Error gerer par Hexchat
 
-	std::string msg = request.str(); // PRIVMSG(client, target, "");
+	std::string token;
+	std::string msg;
+	request >> token;
+	if (token[0] == ':')
+		token.erase(token.begin());
+	do { msg += token + " ";
+	} while (request >> token);
 	if (target[0] == '#') {
 		Channel *channel = server.getChannel(target);
 		if (channel == NULL) // Error: no such channel
 			throw std::runtime_error(ERR_NOSUCHCHANNEL(client, target));
-		channel->sendAllUser(msg);
-		std::cout << "Sended: " << msg << std::endl;
+		channel->sendAllUser(PRIVMSG(client, target, msg), &_nickname);
 	} else {
 		User *user = server.getUser(target);
 		if (user == NULL) // Error: no such user
 			throw std::runtime_error(ERR_NOSUCHNICK(client, target));
-		send(user->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
-		std::cout << "Sended: " << msg << std::endl;
+		user->sendRequest(PRIVMSG(client, target, msg));
 	}
 }
 
@@ -100,8 +117,7 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 		_channels.insert(std::make_pair(channelName, channel));
 	}
 	std::string	msg = RPL_JOIN(client, channelName);
-	channel->sendAllUser(msg);
-	std::cout << "Sended: " << msg << std::endl;
+	channel->sendAllUser(msg, NULL);
 }
 
 void User::leaveChannel(std::istringstream &request, std::string &client, Server &server) {
@@ -141,8 +157,12 @@ void User::kick(std::istringstream &request, std::string &client, Server &server
 	std::string msg;
 	request >> msg; // Error gerer par Hexchat
 	msg = RPL_KICK(client, channelName, target, msg);
-	channel->sendAllUser(msg);
+	channel->sendAllUser(msg, NULL);
 	channel->kick(target);
+	if (channel->isEmpty()) {
+		server.getChannels().erase(channelName);
+		delete channel;
+	}
 }
 
 void	User::invite(std::istringstream &request, std::string &client, Server &server) {
@@ -163,10 +183,8 @@ void	User::invite(std::istringstream &request, std::string &client, Server &serv
 	if (channel->isFull()) // Error: channel is full
 		throw std::runtime_error(ERR_CHANNELISFULL(client, channelName));
 	channel->addUser(target);
-	std::string msg = RPL_INVITESNDR(client, targetName, channelName);
-	send(target->getSockfd(), msg.c_str(), msg.size(), SOCK_NONBLOCK);
-	msg = RPL_INVITERCVR(client, targetName, channelName);
-	channel->sendAllUser(msg);
+	target->sendRequest(RPL_INVITESNDR(client, targetName, channelName));
+	channel->sendAllUser(RPL_INVITERCVR(client, targetName, channelName), NULL);
 }
 
 void User::topic(std::istringstream &request, std::string &client, Server &server) {
@@ -177,22 +195,19 @@ void User::topic(std::istringstream &request, std::string &client, Server &serve
 	if (channel == NULL) // Error: no such channel
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
 
-	std::string msg;
 	std::string topic;
 	if (!(request >> topic)) {
 		topic = channel->getTopic();
 		if (topic.empty())
-			msg = RPL_NOTOPIC(client, channelName);
+			sendRequest(RPL_NOTOPIC(client, channelName));
 		else
-			msg = RPL_SEETOPIC(client, channelName, topic);
-		send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
+			sendRequest(RPL_SEETOPIC(client, channelName, topic));
 		return ;
 	}
 	if (channel->isTopicDefRestricted() && !channel->isOperator(_nickname)) // Error: not operator
 		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
 	channel->setTopic(topic);
-	msg = RPL_TOPIC(client, channelName, topic);
-	channel->sendAllUser(msg);
+	channel->sendAllUser(RPL_TOPIC(client, channelName, topic), NULL);
 }
 
 void User::mode(std::istringstream &request, std::string &client, Server &server) {
@@ -204,8 +219,7 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 	std::string msg;
 	std::string mode;
 	if (!(request >> mode)) { // Liste des modes
-		msg = RPL_CHANNELMODEIS(client, channelName, channel->getMode());
-		send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
+		sendRequest(RPL_CHANNELMODEIS(client, channelName, channel->getMode()));
 		return ;
 	}
 	if (!channel->isOperator(_nickname)) // Error: not operator
@@ -218,16 +232,16 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 				define = true;
 			else if (*it == '-')
 				define = false;
-			else if (*it == 'o')
-				channel->setByInvitation(define);
 			else if (*it == 'i')
+				channel->setByInvitation(define);
+			else if (*it == 't')
 				channel->setTopicRestriction(define);
 			else if (*it == 'k') {
 				token = "";
 				if (define && !(request >> token)) // Error: no password (params) // is silent (standard RFC)
 					continue;
 				channel->setPassword(token);
-			} else if (*it == 't') {
+			} else if (*it == 'o') {
 				if (!(request >> token)) // Error: no target (params) // is silent (standard RFC)
 					continue;
 				if (!channel->isUser(token)) // Error: target not in channel
@@ -240,13 +254,21 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 			} else // Error: unknown mode
 				throw std::runtime_error(ERR_UNKNOWNMODE(client, *it));
 		} catch (std::exception &e) {
-			msg = e.what();
-			send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
+			sendRequest(e.what());
 		}
 		channel->setMode(mode);
-		msg = RPL_MODE(client, channelName, mode, token); // TODO token -> tokens list
-		channel->sendAllUser(msg);
+		channel->sendAllUser(RPL_MODE(client, channelName, mode, token), NULL);
 	}
+}
+
+void User::who(std::istringstream &request, std::string &client, Server &server) {
+	std::string channelName;
+	request >> channelName; // Error gerer par Hexchat
+	Channel *channel = server.getChannel(channelName);
+	if (channel == NULL) // Error: no such channel
+		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+	sendRequest(RPL_NAMEREPLY(_nickname, channelName, channel->who()));
+	sendRequest(RPL_ENDOFNAMES(_nickname, channelName));
 }
 
 void User::checkPass(std::istringstream &request, std::string &client, Server &server) {
@@ -258,10 +280,10 @@ void User::checkPass(std::istringstream &request, std::string &client, Server &s
 }
 
 void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
+	(void) client;
 	request >> _username; // Error gerer par Hexchat
 	if (_registrationState == USER) {
-		std::string msg = RPL_WELCOME(_nickname, client);
-		send(_sockfd, msg.c_str(), msg.size(), SOCK_NONBLOCK);
+		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
 		server.getUsers().insert(std::make_pair(_nickname, this));
 		_registrationState = REGISTER;
 	}
@@ -276,6 +298,11 @@ void User::setNickname(std::istringstream &request, std::string &client, Server 
 	_nickname = nick;
 	if (_registrationState == NICK)
 		_registrationState = USER;
+	if (!_username.empty()) {
+		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
+		server.getUsers().insert(std::make_pair(_nickname, this));
+		_registrationState = REGISTER;
+	}
 	(void) client; // bzr, on l'utilise [-Werror=unused-parameter]
 }
 

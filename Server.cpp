@@ -73,7 +73,7 @@ struct pollfd initPollfd(int sockfd) {
 
 void	Server::run() {
 	std::cout << "Server running on " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
-	listen(_sockfd, 5); // on le met en mode ecoute
+	listen(_sockfd, 1024); // on le met en mode ecoute
 
 	std::vector<struct pollfd> fds;
 	fds.push_back(initPollfd(_sockfd));
@@ -89,7 +89,6 @@ void	Server::run() {
 						continue;
 					}
 					fds.push_back(initPollfd(user->getSockfd()));
-					_users.insert(std::make_pair(user->getNickname(), user)); // TODO nickname pas encore recu (stack d'attente ?)
 					_usersfd.insert(std::make_pair(user->getSockfd(), user));
 				} else {
 					User* user = _usersfd.find(fds[i].fd)->second;
@@ -118,11 +117,11 @@ Server::CommandMap	Server::init_commands()
 	commands["PRIVMSG"] = &User::sendMsg;
 	commands["JOIN"] = &User::joinChannel;
 	commands["PART"] = &User::leaveChannel;
-	commands["KICK"] = &User::leaveChannel;
+	commands["KICK"] = &User::kick;
 	commands["INVITE"] = &User::invite;
 	commands["TOPIC"] = &User::topic;
 	commands["MODE"] = &User::mode;
-	// commands["WHO"] = &User::who; // liste tous les users du channel
+	commands["WHO"] = &User::who;
 	commands["NICK"] = &User::setNickname;
 	commands["USER"] = &User::setUsername;
 	commands["PASS"] = &User::checkPass;
