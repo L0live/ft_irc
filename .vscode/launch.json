@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/ircserv",
-            "args": ["6667", "a"],
+            "args": ["6667", ""],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

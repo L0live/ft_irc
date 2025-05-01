@@ -206,6 +206,11 @@ void User::topic(std::istringstream &request, std::string &client, Server &serve
 	}
 	if (channel->isTopicDefRestricted() && !channel->isOperator(_nickname)) // Error: not operator
 		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
+	std::string token;
+	if (topic[0] == ':')
+		topic.erase(topic.begin());
+	while (request >> token)
+		topic += token + " ";
 	channel->setTopic(topic);
 	channel->sendAllUser(RPL_TOPIC(client, channelName, topic), NULL);
 }
@@ -224,8 +229,11 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 	}
 	if (!channel->isOperator(_nickname)) // Error: not operator
 		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
-	bool define = true;
+	int define = 3;
+	bool changed = false;
+	bool sendMode = false;
 	std::string token;
+	std::string tokens;
 	for (std::string::iterator it = mode.begin(); it != mode.end(); it++) {
 		try {
 			if (*it == '+')
@@ -233,31 +241,57 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 			else if (*it == '-')
 				define = false;
 			else if (*it == 'i')
-				channel->setByInvitation(define);
+				channel->setByInvitation(define, &changed);
 			else if (*it == 't')
-				channel->setTopicRestriction(define);
+				channel->setTopicRestriction(define, &changed);
 			else if (*it == 'k') {
 				token = "";
 				if (define && !(request >> token)) // Error: no password (params) // is silent (standard RFC)
 					continue;
-				channel->setPassword(token);
+				channel->setPassword(token, &changed);
 			} else if (*it == 'o') {
 				if (!(request >> token)) // Error: no target (params) // is silent (standard RFC)
 					continue;
 				if (!channel->isUser(token)) // Error: target not in channel
 					throw std::runtime_error(ERR_USERNOTINCHANNEL(client, token, channelName));
-				channel->handleOperatorStatus(define, token);
+				channel->handleOperatorStatus(define, token, &changed);
 			} else if (*it == 'l') {
 				if (define && !(request >> token)) // Error: no user limit (params) // is silent (standard RFC)
 					continue;
-				channel->setUserLimit(!define, token);
+				channel->setUserLimit(!define, token, &changed);
 			} else // Error: unknown mode
 				throw std::runtime_error(ERR_UNKNOWNMODE(client, *it));
 		} catch (std::exception &e) {
 			sendRequest(e.what());
 		}
-		channel->setMode(mode);
-		channel->sendAllUser(RPL_MODE(client, channelName, mode, token), NULL);
+		if (*it != '+' && *it != '-' && !changed) {
+			it = mode.erase(it);
+			if (it == mode.end())
+				break;
+		} else {
+			if (*it == 'o' || (define && (*it == 'k' || *it == 'l')))
+				tokens += token + " ";
+			if (define == 3)
+				mode.insert(mode.begin(), 1, '+');
+			sendMode = true;
+		}
+	}
+	if (sendMode) {
+		if (!tokens.empty()) {
+			tokens.erase(tokens.end() - 1);
+			size_t pos = tokens.rfind(' ');
+			if (pos == std::string::npos)
+				pos = 0;
+			else
+				pos += 1;
+			tokens.insert(tokens.begin() + pos, 1, ':');
+		}
+		for (std::string::iterator it = mode.begin() + 1; it != mode.end(); it++) {
+			if (*it == *(it - 1) && (*it == '+' || *it == '-'))
+				mode.erase(it);
+		}
+		//checkTokens();
+		channel->sendAllUser(RPL_MODE(client, channelName, mode, tokens), NULL);
 	}
 }
 
@@ -274,7 +308,7 @@ void User::who(std::istringstream &request, std::string &client, Server &server)
 void User::checkPass(std::istringstream &request, std::string &client, Server &server) {
 	std::string password;
 	request >> password; // Error gerer par Hexchat
-	if (password != server.getPassword()) // Error: password incorrect
+	if (!server.getPassword().empty() && password != server.getPassword()) // Error: password incorrect
 		throw std::runtime_error(ERR_PASSWDMISMATCH(client));
 	_registrationState = NICK;
 }
@@ -296,8 +330,10 @@ void User::setNickname(std::istringstream &request, std::string &client, Server 
 	if (server.getUser(nick)) // Error: nickname already in use
 		throw std::runtime_error(ERR_NICKNAMEINUSE(client, nick));
 	_nickname = nick;
-	if (_registrationState == NICK)
+	if (_registrationState == NICK || server.getPassword().empty())
 		_registrationState = USER;
+	else if (_registrationState == PASS)
+		throw std::runtime_error(ERR_PASSWDMISMATCH(client));
 	if (!_username.empty()) {
 		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
 		server.getUsers().insert(std::make_pair(_nickname, this));

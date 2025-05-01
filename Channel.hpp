@@ -15,7 +15,6 @@ private:
 	std::string	_password;
 	std::string	_topic;
 	bool		_topicRestriction;
-	std::string	_mode;
 	UserMap		_users;
 	UserMap		_operators;
 	int			_userLimit;
@@ -38,20 +37,19 @@ public:
 	void	setTopic(std::string &topic);
 	std::string	getTopic() const;
 	// MODE
-	void	setByInvitation(bool byInvitation);
+	void	setByInvitation(bool byInvitation, bool *changed);
 	bool	isByInvitation() const;
-	void	setTopicRestriction(bool topicRestriction);
+	void	setTopicRestriction(bool topicRestriction, bool *changed);
 	bool	isTopicDefRestricted() const;
 	std::string	getMode() const;
-	void	setMode(std::string &mode);
 	bool	isFull();
 	bool	isUser(std::string &user);
 	bool	isOperator(std::string &user);
 	bool	isEmpty();
 	bool	isPassworded() const;
-	void	setPassword(std::string &password);
+	void	setPassword(std::string &password, bool *changed);
 	std::string	getPassword() const;
-	void	handleOperatorStatus(bool opStatus, std::string &user);
-	void	setUserLimit(bool unset, std::string &userLimit);
+	void	handleOperatorStatus(bool opStatus, std::string &user, bool *changed);
+	void	setUserLimit(bool unset, std::string &userLimit, bool *changed);
 };
 #endif

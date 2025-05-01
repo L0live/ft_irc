@@ -22,7 +22,7 @@
 #define RPL_ENDOFNAMES(client, channel)				(": 366 " + client + " " + channel + " :End of /NAMES list.\r\n")
 #define RPL_PART(client, channel)					(":" + client + " PART " + channel + "\r\n")
 #define RPL_PARTMESSAGE(client, channel, message)	(":" + client + " PART " + channel + " :" + message +"\r\n")
-#define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " :" + name + "\r\n")
+#define RPL_MODE(client, channel, mode, name)		(":" + client + " MODE " + channel + " " + mode + " " + name + "\r\n")
 #define RPL_KICK(client, channel, target, reason)	(":" + client + " KICK " + channel + " " + target + " " + reason + "\r\n")
 #define RPL_INVITERCVR(client, invitee, channel)	(":" + client + " INVITE " + invitee + " " + channel + "\r\n")
 #define RPL_NICK(oldNick, newNick)					(":" + oldNick + " NICK " + newNick + "\r\n")

@@ -4,7 +4,7 @@
 Channel::Channel() {}
 
 Channel::Channel(std::string &name, User *user)
-: _name(name), _topicRestriction(true), _mode("+t"), _userLimit(-1), _byInvitation(false) {
+: _name(name), _topicRestriction(true), _userLimit(-1), _byInvitation(false) {
 	_operators.insert(std::make_pair(user->getNickname(), user));
 }
 
@@ -17,7 +17,6 @@ Channel &Channel::operator=(const Channel &src) {
 	_password = src._password;
 	_topic = src._topic;
 	_topicRestriction = src._topicRestriction;
-	_mode = src._mode;
 	_users = src._users;
 	_operators = src._operators;
 	_userLimit = src._userLimit;
@@ -73,17 +72,35 @@ void	Channel::setTopic(std::string &topic) {_topic = topic;}
 
 std::string	Channel::getTopic() const {return _topic;}
 
-void	Channel::setByInvitation(bool byInvitation) {_byInvitation = byInvitation;}
+void	Channel::setByInvitation(bool byInvitation, bool *changed) {
+	if (byInvitation != _byInvitation)
+		*changed = true;
+	_byInvitation = byInvitation;
+}
 
 bool	Channel::isByInvitation() const {return _byInvitation;}
 
-void	Channel::setTopicRestriction(bool topicRestriction) {_topicRestriction = topicRestriction;}
+void	Channel::setTopicRestriction(bool topicRestriction, bool *changed) {
+	if (topicRestriction != _topicRestriction)
+		*changed = true;
+	_topicRestriction = topicRestriction;
+}
 
 bool	Channel::isTopicDefRestricted() const {return _topicRestriction;}
 
-std::string	Channel::getMode() const {return _mode;}
+std::string	Channel::getMode() const {
+	std::string mode = "+";
 
-void	Channel::setMode(std::string &mode) {_mode = mode;}
+	if (_byInvitation)
+		mode += "i";
+	if (_topicRestriction)
+		mode += "t";
+	if (!_password.empty())
+		mode += "k";
+	if (_userLimit != -1)
+		mode += "l";
+	return mode;
+}
 
 bool	Channel::isFull() {
 	if (_userLimit != -1 && (long long)_users.size() >= _userLimit)
@@ -109,28 +126,36 @@ bool	Channel::isEmpty() {return (_users.empty() && _operators.empty() ? true : f
 
 bool	Channel::isPassworded() const {return !_password.empty();}
 
-void	Channel::setPassword(std::string &password) {_password = password;}
+void	Channel::setPassword(std::string &password, bool *changed) {
+	if (password != _password)
+		*changed = true;
+	_password = password;
+}
 
 std::string	Channel::getPassword() const {return _password;}
 
-void	Channel::handleOperatorStatus(bool opStatus, std::string &user) {
+void	Channel::handleOperatorStatus(bool opStatus, std::string &user, bool *changed) {
 	if (opStatus) {
 		UserMap::iterator it = _users.find(user);
 		if (it != _users.end()) {
 			_operators.insert(std::make_pair(it->first, it->second));
 			_users.erase(it);
+			*changed = true;
 		}
 	} else {
 		UserMap::iterator it = _operators.find(user);
 		if (it != _operators.end()) {
 			_users.insert(std::make_pair(it->first, it->second));
 			_operators.erase(it);
+			*changed = true;
 		}
 	}
 }
 
-void	Channel::setUserLimit(bool unset, std::string &userLimit) {
+void	Channel::setUserLimit(bool unset, std::string &userLimit, bool *changed) {
 	if (unset) {
+		if (_userLimit == -1)
+			*changed = true;
 		_userLimit = -1;
 		return ;
 	}
@@ -138,5 +163,7 @@ void	Channel::setUserLimit(bool unset, std::string &userLimit) {
 	int limit = strtol(userLimit.c_str(), &endptr, 10);
 	if (*endptr != '\0' || limit < 0) // Error: bad user limit // is silent (standard RFC)
 		return ;
+	if (limit != _userLimit)
+		*changed = true;
 	_userLimit = limit;
 }
