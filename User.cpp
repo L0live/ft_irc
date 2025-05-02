@@ -20,25 +20,20 @@ User::~User() {
 }
 
 std::string User::receiveRequest() {
-	
-	char	buffer[1024];
-	int		tmp;
+	std::string buffer;
+	char	tmpBuffer[1024];
 
-	memset(buffer, '\0', sizeof(buffer));
-	tmp = recv(_sockfd, buffer, sizeof(buffer) - 1, 0);
-	if (tmp <= 0) // vrmt necessaire ?
-		return ("");	
+	memset(tmpBuffer, '\0', sizeof(tmpBuffer));
+	while (recv(_sockfd, tmpBuffer, sizeof(tmpBuffer) - 1, 0) > 0) {
+		buffer += tmpBuffer;
+		memset(tmpBuffer, '\0', sizeof(tmpBuffer));
+	}
 	std::cout << "Received: " << buffer << std::endl;
 	return std::string(buffer);
 }
 
-void	User::sendRequest(std::string msg){
-	
-	//!DEBUG
-	std::cout << "void	sendRequest() " << std::endl;
-	std::cout << "\t sendRequest() : " << msg << std::endl;
-	//!
-
+void	User::sendRequest(std::string msg) {
+	std::cout << "Sended: " << msg << std::endl;
 	send(_sockfd, msg.c_str(), msg.size(), MSG_NOSIGNAL);
 }
 
@@ -59,7 +54,6 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 						throw std::runtime_error(ERR_NOTREGISTERED());
 					(this->*(it->second))(requestLine, client, server);
 				} catch(const std::exception& e) {
-					//if (token == "PASS")
 					sendRequest(e.what());
 				}
 			}
@@ -91,7 +85,6 @@ void User::sendMsg(std::istringstream &request, std::string &client, Server &ser
 		user->sendRequest(PRIVMSG(client, target, msg));
 	}
 }
-
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
 	std::string	channelName;
@@ -215,6 +208,22 @@ void User::topic(std::istringstream &request, std::string &client, Server &serve
 	channel->sendAllUser(RPL_TOPIC(client, channelName, topic), NULL);
 }
 
+void sendModeFormatter(std::string &mode, std::string &tokens) {
+	if (!tokens.empty()) {
+		tokens.erase(tokens.end() - 1);
+		size_t pos = tokens.rfind(' ');
+		if (pos == std::string::npos)
+			pos = 0;
+		else
+			pos += 1;
+		tokens.insert(tokens.begin() + pos, 1, ':');
+	}
+	for (std::string::iterator it = mode.begin() + 1; it != mode.end(); it++) {
+		if (*it == *(it - 1) && (*it == '+' || *it == '-'))
+			mode.erase(it);
+	}
+}
+
 void User::mode(std::istringstream &request, std::string &client, Server &server) {
 	std::string channelName;
 	request >> channelName; // Error gerer par Hexchat
@@ -223,18 +232,16 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
 	std::string msg;
 	std::string mode;
-	if (!(request >> mode)) { // Liste des modes
-		sendRequest(RPL_CHANNELMODEIS(client, channelName, channel->getMode()));
-		return ;
-	}
+	if (!(request >> mode)) // Mode list // Not an error
+		throw std::runtime_error(RPL_CHANNELMODEIS(client, channelName, channel->getMode()));
 	if (!channel->isOperator(_nickname)) // Error: not operator
 		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
-	int define = 3;
-	bool changed = false;
 	bool sendMode = false;
-	std::string token;
+	int define = 3;
 	std::string tokens;
 	for (std::string::iterator it = mode.begin(); it != mode.end(); it++) {
+		std::string token;
+		bool changed = false;
 		try {
 			if (*it == '+')
 				define = true;
@@ -245,7 +252,6 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 			else if (*it == 't')
 				channel->setTopicRestriction(define, &changed);
 			else if (*it == 'k') {
-				token = "";
 				if (define && !(request >> token)) // Error: no password (params) // is silent (standard RFC)
 					continue;
 				channel->setPassword(token, &changed);
@@ -277,20 +283,7 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 		}
 	}
 	if (sendMode) {
-		if (!tokens.empty()) {
-			tokens.erase(tokens.end() - 1);
-			size_t pos = tokens.rfind(' ');
-			if (pos == std::string::npos)
-				pos = 0;
-			else
-				pos += 1;
-			tokens.insert(tokens.begin() + pos, 1, ':');
-		}
-		for (std::string::iterator it = mode.begin() + 1; it != mode.end(); it++) {
-			if (*it == *(it - 1) && (*it == '+' || *it == '-'))
-				mode.erase(it);
-		}
-		//checkTokens();
+		sendModeFormatter(mode, tokens);
 		channel->sendAllUser(RPL_MODE(client, channelName, mode, tokens), NULL);
 	}
 }
@@ -326,7 +319,6 @@ void User::setUsername(std::istringstream &request, std::string &client, Server 
 void User::setNickname(std::istringstream &request, std::string &client, Server &server) {
 	std::string nick;
 	request >> nick; // Error gerer par Hexchat
-	std::cout << "Set nickname: " << nick << std::endl;
 	if (server.getUser(nick)) // Error: nickname already in use
 		throw std::runtime_error(ERR_NICKNAMEINUSE(client, nick));
 	_nickname = nick;
