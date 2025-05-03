@@ -29,7 +29,7 @@ std::string User::receiveRequest() {
 		memset(tmpBuffer, '\0', sizeof(tmpBuffer));
 	}
 	std::cout << "Received: " << buffer << std::endl;
-	return std::string(buffer);
+	return buffer;
 }
 
 void	User::sendRequest(std::string msg) {
