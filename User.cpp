@@ -71,8 +71,7 @@ void User::sendMsg(std::istringstream &request, std::string &client, Server &ser
 	request >> token;
 	if (token[0] == ':')
 		token.erase(token.begin());
-	do { msg += token + " ";
-	} while (request >> token);
+	do { msg += token + " ";} while (request >> token);
 	if (target[0] == '#') {
 		Channel *channel = server.getChannel(target);
 		if (channel == NULL) // Error: no such channel
@@ -83,6 +82,25 @@ void User::sendMsg(std::istringstream &request, std::string &client, Server &ser
 		if (user == NULL) // Error: no such user
 			throw std::runtime_error(ERR_NOSUCHNICK(client, target));
 		user->sendRequest(PRIVMSG(client, target, msg));
+	}
+}
+
+void User::quit(std::istringstream &request, std::string &client, Server &server) {
+	std::string msg;
+	std::string token;
+
+	request >> token;
+	if (token[0] == ':')
+		token.erase(token.begin());
+	do { msg += token + " ";} while (request >> token);
+	msg = RPL_QUIT(client, msg);
+	for (ChannelMap::iterator it = _channels.begin(); it != _channels.end(); it++) {
+		Channel *channel = it->second;
+		channel->leave(_nickname, msg);
+		if (channel->isEmpty()) {
+			server.getChannels().erase(it->first);
+			delete channel;
+		}
 	}
 }
 

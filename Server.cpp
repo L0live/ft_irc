@@ -115,6 +115,7 @@ Server::CommandMap	Server::init_commands()
 	CommandMap commands;
 
 	commands["PRIVMSG"] = &User::sendMsg;
+	commands["QUIT"] = &User::quit;
 	commands["JOIN"] = &User::joinChannel;
 	commands["PART"] = &User::leaveChannel;
 	commands["KICK"] = &User::kick;

@@ -32,6 +32,7 @@ public:
 	void	sendRequest(std::string msg);
 	void	interpretRequest(std::istringstream &request, Server &server);
 	void	sendMsg(std::istringstream &request, std::string &client, Server &server);
+	void	quit(std::istringstream &request, std::string &client, Server &server);
 	void	joinChannel(std::istringstream &request, std::string &client, Server &server);
 
 	virtual void	leaveChannel(std::istringstream &request, std::string &client, Server &server);
