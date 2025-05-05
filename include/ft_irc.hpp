@@ -49,7 +49,7 @@
 #define ERR_NONICKNAMEGIVEN(client, nick)			(": 431 " + client + " " + nick + " :No nickname given\r\n")
 
 #define ERR_ERRONEUSNICKNAME(client, nickname)		(": 432 " + client + " " + nickname + " :Erroneus nickname\r\n")
-#define ERR_NICKNAMEINUSE(client, nick)				(": 433 * " + nick + " :Nickname is already in use\r\n")
+#define ERR_NICKNAMEINUSE(nick)				        (": 433 * " + nick + " :Nickname is already in use\r\n")
 #define ERR_ERRONEUSUSERNAME(client, username)		(": 432 " + client + " " + username + " :Erroneus username\r\n")
 #define ERR_USERNAMEINUSE(client, username)			(": 433 * " + client + " " + username + " :Username is already in use\r\n")
 #define ERR_NORECIPIENT(client, command)			(": 411 " + client + " :No recipient given (" + command + ")\r\n")

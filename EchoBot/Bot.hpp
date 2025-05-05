@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <signal.h>
+#include <csignal>
 #include <netdb.h>
 #include <cmath>
 #include <unistd.h>
@@ -18,21 +18,19 @@ private:
     std::string _username;
 
     // Server information
+    int _servSockfd;
     int _servPort;
     sockaddr_in _servAddr;
     std::string _servPassword;
-	
+
     Bot();
-	static void handleSIGINT(int);
     void init();
     std::string receiveRequest();
     void sendRequest(std::string msg);
     void interpretRequest(std::istringstream &request);
     void sendMsg(std::istringstream &request, std::string &client);
 public:
-	static int _servSockfd;
-    
-	Bot(int servPort, std::string servPassword);
+    Bot(int servPort, std::string servPassword);
     ~Bot();
 
     void run();

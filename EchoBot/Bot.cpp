@@ -3,20 +3,16 @@
 Bot::Bot() {}
 
 Bot::Bot(int servPort, std::string servPassword)
-    : _nickname("EchoBot"), _username(_nickname),  _servPort(servPort), _servPassword(servPassword) {init();} // nick = ft_Bot
+    : _nickname("EchoBot"), _username(_nickname),  _servPort(servPort), _servPassword(servPassword) {init();}
 
 Bot::~Bot() {
     if (_servSockfd != -1) {
+        // sendRequest("QUIT :Shutting down\r\n");
         close(_servSockfd);
     }
 }
 
-void	Bot::handleSIGINT(int) {
-	std::string msg = "QUIT :Leaving\r\n";
-    std::cout << "Sended: " << msg << std::endl;
-    send(_servSockfd, msg.c_str(), msg.size(), MSG_NOSIGNAL);
-	throw std::runtime_error("\nBot shutting down...");
-}
+void	handleSIGINT(int) {throw std::runtime_error("\nBot shutting down...");}
 
 void	Bot::init() {
 	signal(SIGINT, handleSIGINT); // On gère le signal SIGINT (Ctrl+C)
@@ -51,7 +47,7 @@ void Bot::run() {
     while (true) {
         std::string response = receiveRequest();
         if (response.empty())
-            continue;
+            throw std::runtime_error("Error: server disconnected");
         std::istringstream request(response);
         interpretRequest(request);
     }

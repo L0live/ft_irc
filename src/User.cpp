@@ -103,7 +103,7 @@ void User::quit(std::istringstream &request, std::string &client, Server &server
 			delete channel;
 		}
 	}
-	server.toLeave(_nickname);
+	server.toLeave();
 }
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
@@ -320,16 +320,18 @@ void User::who(std::istringstream &request, std::string &client, Server &server)
 }
 
 void User::checkPass(std::istringstream &request, std::string &client, Server &server) {
+	(void) client;
 	std::string password;
 	request >> password; // Error gerer par Hexchat
-	if (!server.getPassword().empty() && password != server.getPassword()) // Error: password incorrect
-		throw std::runtime_error(ERR_PASSWDMISMATCH(client));
-	_registrationState = NICK;
+	if (server.getPassword().empty() || password == server.getPassword()) // Error: password incorrect
+		_registrationState = NICK;
 }
 
 void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
 	(void) client;
 	request >> _username; // Error gerer par Hexchat
+	if (_registrationState == PASS)
+		throw std::runtime_error(ERR_PASSWDMISMATCH(CLIENT(_nickname, _username)));
 	if (_registrationState == USER) {
 		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
 		server.getUsers().insert(std::make_pair(_nickname, this));
@@ -341,13 +343,11 @@ void User::setNickname(std::istringstream &request, std::string &client, Server 
 	std::string nick;
 	request >> nick; // Error gerer par Hexchat
 	if (server.getUser(nick)) // Error: nickname already in use
-		throw std::runtime_error(ERR_NICKNAMEINUSE(client, nick));
+		throw std::runtime_error(ERR_NICKNAMEINUSE(nick));
 	_nickname = nick;
 	if (_registrationState == NICK || server.getPassword().empty())
 		_registrationState = USER;
-	else if (_registrationState == PASS)
-		throw std::runtime_error(ERR_PASSWDMISMATCH(client));
-	if (!_username.empty()) {
+	if (_registrationState == USER && !_username.empty()) {
 		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
 		server.getUsers().insert(std::make_pair(_nickname, this));
 		_registrationState = REGISTER;

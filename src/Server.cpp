@@ -1,9 +1,9 @@
 #include "../include/Server.hpp"
 #include "../include/ft_irc.hpp"
 
-Server::Server() : _password("") {init("6667");}
+Server::Server() : _password(""), _toLeave(false) {init("6667");}
 
-Server::Server(std::string port, std::string password) : _password(password) {init(port);}
+Server::Server(std::string port, std::string password) : _password(password), _toLeave(false) {init(port);}
 
 Server::Server(const Server &src) {*this = src;}
 
@@ -96,12 +96,12 @@ void	Server::run() {
 					std::istringstream request(tmp);
 					if (!tmp.empty())
 						user->interpretRequest(request, *this);					
-					if (!_toLeave.empty() || tmp.empty()) {
+					if (_toLeave || tmp.empty()) {
 						_users.erase(user->getNickname());
 						_usersfd.erase(fds[i].fd);
 						fds.erase(fds.begin() + i);
 						i--;
-						_toLeave = "";
+						_toLeave = false;
 						delete user;
 					}
 				}
@@ -150,6 +150,4 @@ ChannelMap	&Server::getChannels() {return _channels;}
 
 UserMap	&Server::getUsers() {return _users;}
 
-void Server::toLeave(std::string nick) {
-	_toLeave = nick;
-}
+void Server::toLeave() {_toLeave = true;}
