@@ -330,7 +330,7 @@ void User::checkPass(std::istringstream &request, std::string &client, Server &s
 void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
 	(void) client;
 	request >> _username; // Error gerer par Hexchat
-	if (_registrationState == PASS)
+	if (_registrationState == PASS && !server.getPassword().empty())
 		throw std::runtime_error(ERR_PASSWDMISMATCH(CLIENT(_nickname, _username)));
 	if (_registrationState == USER) {
 		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
