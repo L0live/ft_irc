@@ -93,16 +93,17 @@ void	Server::run() {
 				} else {
 					User* user = _usersfd.find(fds[i].fd)->second;
 					std::string tmp = user->receiveRequest();
-					if (tmp.empty()) {
+					std::istringstream request(tmp);
+					if (!tmp.empty())
+						user->interpretRequest(request, *this);					
+					if (!_toLeave.empty() || tmp.empty()) {
 						_users.erase(user->getNickname());
 						_usersfd.erase(fds[i].fd);
 						fds.erase(fds.begin() + i);
 						i--;
+						_toLeave = "";
 						delete user;
-						continue;
 					}
-					std::istringstream request(tmp);
-					user->interpretRequest(request, *this);
 				}
 			}
 		}
@@ -148,3 +149,7 @@ User	*Server::getUser(std::string &name) {
 ChannelMap	&Server::getChannels() {return _channels;}
 
 UserMap	&Server::getUsers() {return _users;}
+
+void Server::toLeave(std::string nick) {
+	_toLeave = nick;
+}

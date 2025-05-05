@@ -69,6 +69,7 @@ void User::sendMsg(std::istringstream &request, std::string &client, Server &ser
 	std::string token;
 	std::string msg;
 	request >> token;
+
 	if (token[0] == ':')
 		token.erase(token.begin());
 	do { msg += token + " ";} while (request >> token);
@@ -102,12 +103,14 @@ void User::quit(std::istringstream &request, std::string &client, Server &server
 			delete channel;
 		}
 	}
+	server.toLeave(_nickname);
 }
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
 	std::string	channelName;
 	request >> channelName; // Error gerer par Hexchat
-
+	if (channelName[0] != '#')
+		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
 	Channel *channel = server.getChannel(channelName);
 	if (!channel) {
 		channel = new Channel(channelName, this);

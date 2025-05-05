@@ -23,6 +23,8 @@ private:
 	ChannelMap	_channels;
 	UserMap		_users;
 	UserFdMap	_usersfd;
+	
+	std::string	_toLeave;
 
 	Server();
 	
@@ -43,6 +45,7 @@ public:
 	User	*getUser(std::string &name);
 	ChannelMap	&getChannels();
 	UserMap	&getUsers();
+	void	toLeave(std::string nick);
 };
 
 
