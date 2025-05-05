@@ -7,6 +7,7 @@ Bot::Bot(int servPort, std::string servPassword)
 
 Bot::~Bot() {
     if (_servSockfd != -1) {
+        sendRequest("QUIT :Shutting down\r\n");
         close(_servSockfd);
     }
 }
