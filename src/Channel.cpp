@@ -66,6 +66,18 @@ void Channel::leave(const std::string &user, const std::string &msg) {
 
 void	Channel::addUser(User *user) {
 	_users.insert(std::make_pair(user->getNickname(), user));
+	_invited.remove(user->getNickname());
+}
+
+void	Channel::invite(std::string nickname) {
+	if (std::find(_invited.begin(), _invited.end(), nickname) == _invited.end())
+		_invited.push_back(nickname);
+}
+
+bool	Channel::isInvited(std::string nickname) {
+	if (std::find(_invited.begin(), _invited.end(), nickname) != _invited.end())
+		return true;
+	return false;
 }
 
 void	Channel::setTopic(std::string &topic) {_topic = topic;}
@@ -103,7 +115,7 @@ std::string	Channel::getMode() const {
 }
 
 bool	Channel::isFull() {
-	if (_userLimit != -1 && (long long)_users.size() >= _userLimit)
+	if (_userLimit != -1 && _users.size() + _operators.size() >= (size_t)_userLimit)
 		return true;
 	return false;
 }
@@ -154,7 +166,7 @@ void	Channel::handleOperatorStatus(bool opStatus, std::string &user, bool *chang
 
 void	Channel::setUserLimit(bool unset, std::string &userLimit, bool *changed) {
 	if (unset) {
-		if (_userLimit == -1)
+		if (_userLimit != -1)
 			*changed = true;
 		_userLimit = -1;
 		return ;

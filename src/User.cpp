@@ -24,10 +24,11 @@ std::string User::receiveRequest() {
 	char	tmpBuffer[1024];
 
 	memset(tmpBuffer, '\0', sizeof(tmpBuffer));
-	while (recv(_sockfd, tmpBuffer, sizeof(tmpBuffer) - 1, 0) > 0) {
+	while (recv(_sockfd, tmpBuffer, sizeof(tmpBuffer) - 1, 0) > 0) { // TODO gerer le Ctrl+D (EOF)
 		buffer += tmpBuffer;
 		memset(tmpBuffer, '\0', sizeof(tmpBuffer));
 	}
+	std::cout << std::endl;
 	std::cout << "Received: " << buffer << std::endl;
 	return buffer;
 }
@@ -48,14 +49,14 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 		std::string	token;
 		if (requestLine >> token) {
 			Server::CommandMap::iterator	it = commands.find(token);
-			if (it != commands.end()) {
-				try {
-					if (token != "PASS" && token != "NICK" && token != "USER" && _registrationState != REGISTER)
-						throw std::runtime_error(ERR_NOTREGISTERED());
-					(this->*(it->second))(requestLine, client, server);
-				} catch(const std::exception& e) {
-					sendRequest(e.what());
-				}
+			try {
+				if (it == commands.end())
+					throw std::runtime_error(ERR_UNKNOWNCOMMAND(client, token));
+				if (token != "PASS" && token != "NICK" && token != "USER" && _registrationState != REGISTER)
+					throw std::runtime_error(ERR_NOTREGISTERED());
+				(this->*(it->second))(requestLine, client, server);
+			} catch(const std::exception& e) {
+				sendRequest(e.what());
 			}
 		}
 		std::getline(request, tokenLine);
@@ -77,6 +78,8 @@ void User::sendMsg(std::istringstream &request, std::string &client, Server &ser
 		Channel *channel = server.getChannel(target);
 		if (channel == NULL) // Error: no such channel
 			throw std::runtime_error(ERR_NOSUCHCHANNEL(client, target));
+		if (!channel->isUser(_nickname)) // Error: not in channel
+			throw std::runtime_error(ERR_NOTONCHANNEL(client, target));
 		channel->sendAllUser(PRIVMSG(client, target, msg), &_nickname);
 	} else {
 		User *user = server.getUser(target);
@@ -117,7 +120,9 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 		_channels.insert(std::make_pair(channelName, channel));
 		server.getChannels().insert(std::make_pair(channelName, channel));
 	} else {
-		if (channel->isByInvitation()/* && channel->isInvited(_nickname)*/) // Error: channel is invite only (stack d'attente ?)
+		if (channel->isUser(_nickname)) // Error: already in channel
+			throw std::runtime_error(ERR_USERONCHANNEL(client, channelName));
+		if (channel->isByInvitation() && !channel->isInvited(_nickname)) // Error: channel is invite only
 			throw std::runtime_error(ERR_INVITEONLYCHAN(client, channelName));
 		if (channel->isFull()) // Error: channel is full
 			throw std::runtime_error(ERR_CHANNELISFULL(client, channelName));
@@ -183,12 +188,12 @@ void	User::invite(std::istringstream &request, std::string &client, Server &serv
 	std::string targetName;
 	request >> targetName; // Error gerer par Hexchat
 	User *target = server.getUser(targetName);
-	if (target == NULL) // Error: target not found
+	if (!target) // Error: target not found
 		throw std::runtime_error(ERR_NOSUCHNICK(client, targetName));
 	std::string channelName;
 	request >> channelName; // Error gerer par Hexchat
 	Channel *channel = server.getChannel(channelName);
-	if (channel == NULL) // Error: no such channel
+	if (!channel) // Error: no such channel
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
 	if (!channel->isOperator(_nickname)) // Error: not operator
 		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
@@ -196,7 +201,7 @@ void	User::invite(std::istringstream &request, std::string &client, Server &serv
 		throw std::runtime_error(ERR_USERONCHANNEL(targetName, channelName));
 	if (channel->isFull()) // Error: channel is full
 		throw std::runtime_error(ERR_CHANNELISFULL(client, channelName));
-	channel->addUser(target);
+	channel->invite(targetName);
 	target->sendRequest(RPL_INVITESNDR(client, targetName, channelName));
 	channel->sendAllUser(RPL_INVITERCVR(client, targetName, channelName), NULL);
 }

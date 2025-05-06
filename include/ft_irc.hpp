@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <cmath>
+#include <algorithm>
 #include "Server.hpp"
 #include "Channel.hpp"
 #include "User.hpp"

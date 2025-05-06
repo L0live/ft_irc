@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include <list>
 #include <netinet/in.h>
 
 class User;
@@ -17,6 +18,7 @@ private:
 	bool		_topicRestriction;
 	UserMap		_users;
 	UserMap		_operators;
+	std::list<std::string>	_invited;
 	int			_userLimit;
 	bool		_byInvitation;
 
@@ -33,6 +35,8 @@ public:
 	void    kick(const std::string &target);
 	void    leave(const std::string &user, const std::string &msg);
 	void	addUser(User *user);
+	void	invite(std::string nickname);
+	bool	isInvited(std::string nickname);
 	// TOPIC
 	void	setTopic(std::string &topic);
 	std::string	getTopic() const;
