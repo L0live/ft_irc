@@ -121,7 +121,7 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 	std::string	channelName;
 	request >> channelName; // Error gerer par Hexchat
 	if (channelName[0] != '#')
-		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+		channelName = "#" + channelName;
 	Channel *channel = server.getChannel(channelName);
 	if (!channel) {
 		channel = new Channel(channelName, this);
