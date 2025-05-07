@@ -60,6 +60,9 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 			}
 		}
 		std::getline(request, tokenLine);
+		// if(!std::getline(request, tokenLine))
+		// 	break; 
+		//! a gerer le ^D peutetre ici?
 	}
 }
 
@@ -150,7 +153,14 @@ void User::leaveChannel(std::istringstream &request, std::string &client, Server
 
 	std::string msg;
 	if (request >> msg)
+	{
+		if (msg[0] == ':')
+			msg.erase(msg.begin());
+		std::string token;
+		request >> token;
+		do { msg += token + " ";} while (request >> token);	
 		msg = RPL_PARTMESSAGE(client, channelName, msg);
+	}
 	else
 		msg = RPL_PART(client, channelName);
 	channel->leave(_nickname, msg);

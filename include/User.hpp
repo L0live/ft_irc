@@ -17,7 +17,8 @@ class User {
 protected:
 	std::string	_username;
 	std::string _nickname;
-    sockaddr_in _addr;
+	std::string _buffer;
+	sockaddr_in _addr;
     int         _sockfd;
 	RegistrationState _registrationState;
 
