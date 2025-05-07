@@ -18,6 +18,7 @@ protected:
 	std::string	_username;
 	std::string _nickname;
 	std::string _buffer;
+	bool 		_saveBuffer;
 	sockaddr_in _addr;
     int         _sockfd;
 	RegistrationState _registrationState;
@@ -29,9 +30,9 @@ public:
 	User(int servSockfd);
 	virtual ~User();
 
-	std::string	receiveRequest();
+	void	receiveRequest();
+	void	interpretRequest(Server &server);
 	void	sendRequest(std::string msg);
-	void	interpretRequest(std::istringstream &request, Server &server);
 	void	sendMsg(std::istringstream &request, std::string &client, Server &server);
 	void	quit(std::istringstream &request, std::string &client, Server &server);
 	void	joinChannel(std::istringstream &request, std::string &client, Server &server);

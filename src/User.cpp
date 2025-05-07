@@ -3,14 +3,13 @@
 
 User::User() {}
 
-User::User(int servSockfd) {
+User::User(int servSockfd) : _saveBuffer(false), _registrationState(PASS) {
 	socklen_t addr_len = sizeof(_addr);
 	_sockfd = accept(servSockfd, (sockaddr *)&_addr, &addr_len); // on attend jusqu'a ce que le client se connecte
 	if (_sockfd < 0)
 		return ;
 	fcntl(_sockfd, F_SETFL, O_NONBLOCK);
 	std::cout << "Client connected: " << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
-	_registrationState = PASS;
 }
 
 User::~User() {
@@ -19,18 +18,24 @@ User::~User() {
 	}
 }
 
-std::string User::receiveRequest() {
-	std::string buffer;
+void User::receiveRequest() {
 	char	tmpBuffer[1024];
+	ssize_t bytes;
 
-	memset(tmpBuffer, '\0', sizeof(tmpBuffer));
-	while (recv(_sockfd, tmpBuffer, sizeof(tmpBuffer) - 1, 0) > 0) { // TODO gerer le Ctrl+D (EOF)
-		buffer += tmpBuffer;
+	if (!_saveBuffer)
+		_buffer.clear();
+	do {
 		memset(tmpBuffer, '\0', sizeof(tmpBuffer));
-	}
-	std::cout << std::endl;
-	std::cout << "Received: " << buffer << std::endl;
-	return buffer;
+		bytes = recv(_sockfd, tmpBuffer, sizeof(tmpBuffer) - 1, 0);
+		_buffer += tmpBuffer;
+	} while (bytes == 1023);
+	if (std::string(tmpBuffer).empty())
+		_buffer.clear();
+	else if (_buffer[_buffer.size() - 1] != '\n')
+		_saveBuffer = true;
+	else
+		_saveBuffer = false;
+	std::cout << "Received: " << _buffer << std::endl;
 }
 
 void	User::sendRequest(std::string msg) {
@@ -38,13 +43,17 @@ void	User::sendRequest(std::string msg) {
 	send(_sockfd, msg.c_str(), msg.size(), MSG_NOSIGNAL);
 }
 
-void User::interpretRequest(std::istringstream &request, Server &server) {
+void User::interpretRequest(Server &server) {
+	if (_buffer.empty())
+		server.toLeave();
+	if (_saveBuffer)
+		return ;
 	static Server::CommandMap commands = server.init_commands();
+	std::istringstream request(_buffer);
 	std::string client = CLIENT(_nickname, _username);
 
 	std::string	tokenLine;
-	std::getline(request, tokenLine);
-	while (!tokenLine.empty()) {
+	while (std::getline(request, tokenLine)) {
 		std::istringstream	requestLine(tokenLine);
 		std::string	token;
 		if (requestLine >> token) {
@@ -59,10 +68,6 @@ void User::interpretRequest(std::istringstream &request, Server &server) {
 				sendRequest(e.what());
 			}
 		}
-		std::getline(request, tokenLine);
-		// if(!std::getline(request, tokenLine))
-		// 	break; 
-		//! a gerer le ^D peutetre ici?
 	}
 }
 

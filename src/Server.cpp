@@ -92,11 +92,9 @@ void	Server::run() {
 					_usersfd.insert(std::make_pair(user->getSockfd(), user));
 				} else {
 					User* user = _usersfd.find(fds[i].fd)->second;
-					std::string tmp = user->receiveRequest();
-					std::istringstream request(tmp);
-					if (!tmp.empty())
-						user->interpretRequest(request, *this);					
-					if (_toLeave || tmp.empty()) {
+					user->receiveRequest();
+					user->interpretRequest(*this);
+					if (_toLeave) {
 						_users.erase(user->getNickname());
 						_usersfd.erase(fds[i].fd);
 						fds.erase(fds.begin() + i);
@@ -110,9 +108,7 @@ void	Server::run() {
 	}
 }
 
-Server::CommandMap	Server::init_commands()
-{
-
+Server::CommandMap	Server::init_commands() {
 	CommandMap commands;
 
 	commands["PRIVMSG"] = &User::sendMsg;
