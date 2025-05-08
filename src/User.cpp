@@ -364,6 +364,31 @@ void User::setNickname(std::istringstream &request, std::string &client, Server 
 	request >> nick; // Error gerer par Hexchat
 	if (server.getUser(nick)) // Error: nickname already in use
 		throw std::runtime_error(ERR_NICKNAMEINUSE(nick));
+/*
+En général, 9 caractères max, selon la RFC 2812.
+
+Mais certaines implémentations de serveurs modernes peuvent autoriser jusqu’à 30 caractères ou plus (variable selon le serveur IRC).
+
+Caractères autorisés :
+
+Le premier caractère doit être une lettre (A-Z ou a-z).
+
+Les caractères suivants peuvent être :
+
+Lettres (A-Z, a-z)
+
+Chiffres (0-9)
+
+Certains caractères spéciaux : [-][\][][^][_][{][|][}]`
+Caractères interdits :
+
+Espace ( )
+
+Contrôles (ASCII < 32)
+
+Ponctuation générale (!@#$%^&*(),=+<>/? etc.)
+
+Deux NICK ne peuvent pas être identiques (ils doivent être uniques sur le réseau).*/
 	_nickname = nick;
 	if (_registrationState == NICK || server.getPassword().empty())
 		_registrationState = USER;
