@@ -389,6 +389,13 @@ Contrôles (ASCII < 32)
 Ponctuation générale (!@#$%^&*(),=+<>/? etc.)
 
 Deux NICK ne peuvent pas être identiques (ils doivent être uniques sur le réseau).*/
+	size_t pos = nick.find_first_of("!@#$%^&*(),=+<>/? ");
+	if (pos != std::string::npos) {
+		//! erreur 
+		std::cout << "Premier caractère trouvé : '" << nick[pos] << "' à la position " << pos << std::endl;
+	} else {	
+		std::cout << "Aucun des caractères n'a été trouvé." << std::endl;
+	}
 	_nickname = nick;
 	if (_registrationState == NICK || server.getPassword().empty())
 		_registrationState = USER;
