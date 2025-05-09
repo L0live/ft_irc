@@ -60,7 +60,8 @@ void	Server::init(std::string port) {
 	_addr.sin_port = htons(atoi(port.c_str())); // la c notre port
 
 	freeaddrinfo(res);
-	bind(_sockfd, (struct sockaddr *)&_addr, sizeof(_addr)); // on relie le socket du server a notre host
+	if (bind(_sockfd, (struct sockaddr *)&_addr, sizeof(_addr)) == -1) // on relie le socket du server a notre host
+		throw	std::runtime_error("Error: server bind");
 }
 
 struct pollfd initPollfd(int sockfd) {

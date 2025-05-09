@@ -61,7 +61,7 @@ void User::interpretRequest(Server &server) {
 			try {
 				if (it == commands.end())
 					throw std::runtime_error(ERR_UNKNOWNCOMMAND(client, token));
-				if (token != "PASS" && token != "NICK" && token != "USER" && _registrationState != REGISTER)
+				if (_registrationState != REGISTER && token != "PASS" && token != "NICK" && token != "USER")
 					throw std::runtime_error(ERR_NOTREGISTERED());
 				(this->*(it->second))(requestLine, client, server);
 			} catch(const std::exception& e) {
@@ -344,67 +344,57 @@ void User::checkPass(std::istringstream &request, std::string &client, Server &s
 	std::string password;
 	request >> password; // Error gerer par Hexchat
 	if (server.getPassword().empty() || password == server.getPassword()) // Error: password incorrect
-		_registrationState = NICK;
+		_passValid = true;
+	checkRegister(client, server);
 }
 
-void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
+bool User::checkName(std::string name) {
+	if ( name.empty() || name.length() > 9 || !std::isalpha(name[0]))
+		return false;
+	const std::string allowedSpecial = "-[]\\`^_{}|";
+	for (size_t i = 1; i < name.length(); i++) {
+		if (!std::isalpha(name[i]) && !std::isdigit(name[i])
+			&& allowedSpecial.find(name[i]) == std::string::npos)
+			return false;		
+	}
+	return true;
+}
+
+void User::checkRegister(std::string &client, Server &server)
+{
 	(void) client;
-	request >> _username; // Error gerer par Hexchat
-	if (_registrationState == PASS && !server.getPassword().empty())
+	if (server.getPassword().empty())
+		_passValid = true;
+	if (_nickValid && _userValid && !_passValid)
 		throw std::runtime_error(ERR_PASSWDMISMATCH(CLIENT(_nickname, _username)));
-	if (_registrationState == USER) {
+	if(_passValid && _userValid && _nickValid && _registrationState != REGISTER) {
 		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
 		server.getUsers().insert(std::make_pair(_nickname, this));
 		_registrationState = REGISTER;
 	}
+}
+
+void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
+	std::string	user;
+	request >> user; // Error gerer par Hexchat
+	if (!checkName(user))
+		throw std::runtime_error(ERR_ERRONEUSUSERNAME(user, user));
+	_username = user;
+	_userValid = true;
+	checkRegister(client, server);
 }
 
 void User::setNickname(std::istringstream &request, std::string &client, Server &server) {
 	std::string nick;
 	request >> nick; // Error gerer par Hexchat
+	if (!checkName(nick))
+		throw std::runtime_error(ERR_ERRONEUSNICKNAME(nick, nick));
 	if (server.getUser(nick)) // Error: nickname already in use
 		throw std::runtime_error(ERR_NICKNAMEINUSE(nick));
-/*
-En général, 9 caractères max, selon la RFC 2812.
-
-Mais certaines implémentations de serveurs modernes peuvent autoriser jusqu’à 30 caractères ou plus (variable selon le serveur IRC).
-
-Caractères autorisés :
-
-Le premier caractère doit être une lettre (A-Z ou a-z).
-
-Les caractères suivants peuvent être :
-
-Lettres (A-Z, a-z)
-
-Chiffres (0-9)
-
-Certains caractères spéciaux : [-][\][][^][_][{][|][}]`
-Caractères interdits :
-
-Espace ( )
-
-Contrôles (ASCII < 32)
-
-Ponctuation générale (!@#$%^&*(),=+<>/? etc.)
-
-Deux NICK ne peuvent pas être identiques (ils doivent être uniques sur le réseau).*/
-	size_t pos = nick.find_first_of("!@#$%^&*(),=+<>/? ");
-	if (pos != std::string::npos) {
-		//! erreur 
-		std::cout << "Premier caractère trouvé : '" << nick[pos] << "' à la position " << pos << std::endl;
-	} else {	
-		std::cout << "Aucun des caractères n'a été trouvé." << std::endl;
-	}
 	_nickname = nick;
-	if (_registrationState == NICK || server.getPassword().empty())
-		_registrationState = USER;
-	if (_registrationState == USER && !_username.empty()) {
-		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
-		server.getUsers().insert(std::make_pair(_nickname, this));
-		_registrationState = REGISTER;
-	}
-	(void) client; // bzr, on l'utilise [-Werror=unused-parameter]
+	_nickValid = true;
+	checkRegister(client, server);
+	//(void) client; // bzr, on l'utilise [-Werror=unused-parameter]
 }
 
 std::string User::getUsername() const {return _username;}
