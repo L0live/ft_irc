@@ -3,8 +3,11 @@
 
 User::User() {}
 
-User::User(int servSockfd) : _saveBuffer(false), _registrationState(PASS) {
+User::User(int servSockfd) : _saveBuffer(false), _register(false){
 	socklen_t addr_len = sizeof(_addr);
+	_nickValid = false;
+	_userValid = false;
+	_passValid = UNSET;
 	_sockfd = accept(servSockfd, (sockaddr *)&_addr, &addr_len); // on attend jusqu'a ce que le client se connecte
 	if (_sockfd < 0)
 		return ;
@@ -61,7 +64,7 @@ void User::interpretRequest(Server &server) {
 			try {
 				if (it == commands.end())
 					throw std::runtime_error(ERR_UNKNOWNCOMMAND(client, token));
-				if (_registrationState != REGISTER && token != "PASS" && token != "NICK" && token != "USER")
+				if (!_register && token != "PASS" && token != "NICK" && token != "USER")
 					throw std::runtime_error(ERR_NOTREGISTERED());
 				(this->*(it->second))(requestLine, client, server);
 			} catch(const std::exception& e) {
@@ -73,26 +76,30 @@ void User::interpretRequest(Server &server) {
 
 void User::sendMsg(std::istringstream &request, std::string &client, Server &server) {
 	std::string target;
-	request >> target; // Error gerer par Hexchat
+    if (!(request >> target))
+		throw std::runtime_error(ERR_NORECIPIENT(_nickname, "PRIVMSG"));
 
 	std::string token;
 	std::string msg;
 	request >> token;
+	if (token.empty())
+        throw std::runtime_error(ERR_NOTEXTTOSEND(_nickname));
 
 	if (token[0] == ':')
 		token.erase(token.begin());
 	do { msg += token + " ";} while (request >> token);
+
 	if (target[0] == '#') {
 		Channel *channel = server.getChannel(target);
 		if (channel == NULL) // Error: no such channel
-			throw std::runtime_error(ERR_NOSUCHCHANNEL(client, target));
+			throw std::runtime_error(ERR_NOSUCHCHANNEL(_nickname, target));
 		if (!channel->isUser(_nickname)) // Error: not in channel
-			throw std::runtime_error(ERR_NOTONCHANNEL(client, target));
+			throw std::runtime_error(ERR_CANNOTSENDTOCHAN(_nickname, target));
 		channel->sendAllUser(PRIVMSG(client, target, msg), &_nickname);
 	} else {
 		User *user = server.getUser(target);
 		if (user == NULL) // Error: no such user
-			throw std::runtime_error(ERR_NOSUCHNICK(client, target));
+			throw std::runtime_error(ERR_NOSUCHNICK(_nickname, target));
 		user->sendRequest(PRIVMSG(client, target, msg));
 	}
 }
@@ -119,7 +126,9 @@ void User::quit(std::istringstream &request, std::string &client, Server &server
 
 void User::joinChannel(std::istringstream &request, std::string &client, Server &server) {
 	std::string	channelName;
-	request >> channelName; // Error gerer par Hexchat
+	if (!(request >> channelName))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "JOIN"));
+
 	if (channelName[0] != '#')
 		channelName = "#" + channelName;
 	Channel *channel = server.getChannel(channelName);
@@ -143,6 +152,7 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 		channel->addUser(this);
 		_channels.insert(std::make_pair(channelName, channel));
 	}
+
 	std::string	msg = RPL_JOIN(client, channelName);
 	channel->sendAllUser(msg, NULL);
 }
@@ -150,6 +160,11 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 void User::leaveChannel(std::istringstream &request, std::string &client, Server &server) {
 	std::string	channelName;
 	request >> channelName; // Error gerer par Hexchat
+
+	if (!(request >> channelName))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "LEAVE"));
+
+
 	Channel *channel = server.getChannel(channelName);
 	if (channel == NULL) // Error: no such channel
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
@@ -178,10 +193,14 @@ void User::leaveChannel(std::istringstream &request, std::string &client, Server
 
 void User::kick(std::istringstream &request, std::string &client, Server &server) {
 	std::string channelName;
-	request >> channelName; // Error gerer par Hexchat
+	if (!(request >> channelName))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "KICK"));
+
 	Channel *channel = server.getChannel(channelName);
 	if (channel == NULL) // Error: no such channel
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
+	if (!channel->isUser(_nickname)) // Error: _nickname not in channel
+		throw std::runtime_error(ERR_NOTONCHANNEL(client, channelName));		
 	if (!channel->isOperator(_nickname)) // Error: not operator
 		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
 	std::string target;
@@ -201,7 +220,10 @@ void User::kick(std::istringstream &request, std::string &client, Server &server
 
 void	User::invite(std::istringstream &request, std::string &client, Server &server) {
 	std::string targetName;
-	request >> targetName; // Error gerer par Hexchat
+	if (!(request >> targetName))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "INVITE"));
+	
+	
 	User *target = server.getUser(targetName);
 	if (!target) // Error: target not found
 		throw std::runtime_error(ERR_NOSUCHNICK(client, targetName));
@@ -224,11 +246,14 @@ void	User::invite(std::istringstream &request, std::string &client, Server &serv
 void User::topic(std::istringstream &request, std::string &client, Server &server) {
 	(void) server;
 	std::string channelName;
-	request >> channelName; // Error gerer par Hexchat
+	if (!(request >> channelName))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "TOPIC"));
+	
 	Channel *channel = server.getChannel(channelName);
 	if (channel == NULL) // Error: no such channel
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
-
+	if (!channel->isUser(_nickname)) // Error: _nickname not in channel
+		throw std::runtime_error(ERR_NOTONCHANNEL(client, channelName));
 	std::string topic;
 	if (!(request >> topic)) {
 		topic = channel->getTopic();
@@ -267,7 +292,9 @@ void sendModeFormatter(std::string &mode, std::string &tokens) {
 
 void User::mode(std::istringstream &request, std::string &client, Server &server) {
 	std::string channelName;
-	request >> channelName; // Error gerer par Hexchat
+	if (!(request >> channelName))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "MODE"));
+	
 	Channel *channel = server.getChannel(channelName);
 	if (channel == NULL) // Error: no such channel
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
@@ -275,6 +302,8 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 	std::string mode;
 	if (!(request >> mode)) // Mode list // Not an error
 		throw std::runtime_error(RPL_CHANNELMODEIS(client, channelName, channel->getMode()));
+	if (!channel->isUser(_nickname)) // Error: _nickname not in channel
+		throw std::runtime_error(ERR_NOTONCHANNEL(client, channelName));		
 	if (!channel->isOperator(_nickname)) // Error: not operator
 		throw std::runtime_error(ERR_CHANOPRIVSNEEDED(client, channelName));
 	bool sendMode = false;
@@ -331,20 +360,24 @@ void User::mode(std::istringstream &request, std::string &client, Server &server
 
 void User::who(std::istringstream &request, std::string &client, Server &server) {
 	std::string channelName;
-	request >> channelName; // Error gerer par Hexchat
+	if (!(request >> channelName))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "WHO"));
 	Channel *channel = server.getChannel(channelName);
 	if (channel == NULL) // Error: no such channel
 		throw std::runtime_error(ERR_NOSUCHCHANNEL(client, channelName));
-	sendRequest(RPL_NAMEREPLY(_nickname, channelName, channel->who()));
-	sendRequest(RPL_ENDOFNAMES(_nickname, channelName));
+	sendRequest(RPL_NAMEREPLY(client, channelName, channel->who()));
+	sendRequest(RPL_ENDOFNAMES(client, channelName));
 }
 
 void User::checkPass(std::istringstream &request, std::string &client, Server &server) {
 	(void) client;
 	std::string password;
 	request >> password; // Error gerer par Hexchat
+
 	if (server.getPassword().empty() || password == server.getPassword()) // Error: password incorrect
-		_passValid = true;
+		_passValid = TRUE;
+	else
+		_passValid = FALSE;
 	checkRegister(client, server);
 }
 
@@ -363,20 +396,21 @@ bool User::checkName(std::string name) {
 void User::checkRegister(std::string &client, Server &server)
 {
 	(void) client;
-	if (server.getPassword().empty())
-		_passValid = true;
-	if (_nickValid && _userValid && !_passValid)
-		throw std::runtime_error(ERR_PASSWDMISMATCH(CLIENT(_nickname, _username)));
-	if(_passValid && _userValid && _nickValid && _registrationState != REGISTER) {
+	if (!_register && _nickValid && _userValid && !_passValid && !server.getPassword().empty())
+		throw std::runtime_error(ERR_PASSWDMISMATCH(_nickname));
+	if(!_register && _passValid == TRUE && _userValid && _nickValid) {
 		sendRequest(RPL_WELCOME(_nickname, CLIENT(_nickname, _username)));
 		server.getUsers().insert(std::make_pair(_nickname, this));
-		_registrationState = REGISTER;
+		_register = true;
 	}
+	else if (_register)
+		throw std::runtime_error(ERR_ALREADYREGISTRED(client));
 }
 
 void User::setUsername(std::istringstream &request, std::string &client, Server &server) {
 	std::string	user;
-	request >> user; // Error gerer par Hexchat
+	if (!(request >> user))
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "USER"));
 	if (!checkName(user))
 		throw std::runtime_error(ERR_ERRONEUSUSERNAME(user, user));
 	_username = user;
@@ -386,15 +420,19 @@ void User::setUsername(std::istringstream &request, std::string &client, Server 
 
 void User::setNickname(std::istringstream &request, std::string &client, Server &server) {
 	std::string nick;
-	request >> nick; // Error gerer par Hexchat
+	if (!(request >> nick))
+	{
+		if (_nickname.empty())
+			throw	std::runtime_error(ERR_NONICKNAMEGIVEN((std::string)"", "*"));
+		throw	std::runtime_error(ERR_NONICKNAMEGIVEN(client, _nickname));
+	}
 	if (!checkName(nick))
-		throw std::runtime_error(ERR_ERRONEUSNICKNAME(nick, nick));
+		throw std::runtime_error(ERR_ERRONEUSNICKNAME(client, nick));
 	if (server.getUser(nick)) // Error: nickname already in use
 		throw std::runtime_error(ERR_NICKNAMEINUSE(nick));
 	_nickname = nick;
 	_nickValid = true;
 	checkRegister(client, server);
-	//(void) client; // bzr, on l'utilise [-Werror=unused-parameter]
 }
 
 std::string User::getUsername() const {return _username;}
@@ -404,3 +442,5 @@ std::string User::getNickname() const {return _nickname;}
 sockaddr_in User::getAddr() const {return _addr;}
 
 int User::getSockfd() const {return _sockfd;}
+
+bool User::getRegistrationState() const {return _register;}

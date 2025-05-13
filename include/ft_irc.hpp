@@ -37,7 +37,7 @@
 #define RPL_NAMEREPLY(nick, channel, nicknames)		(": 353 " + nick + " = " + channel + " :" + nicknames + "\r\n")
 
 // Error messages
-#define ERR_TOOMUCHPARAMS(client, cmd)				(client + " " + cmd + " :Too much parameters\r\n")
+#define ERR_TOOMUCHPARAMS(client, cmd)				(": " + client + " " + cmd + " :Too much parameters\r\n")
 #define ERR_USERONCHANNEL(nick, channel)			(": 443 " + nick + " " + channel + " :is already on channel\r\n")
 #define ERR_NOSUCHNICK(client, nickname) 			(": 401 " + client + " " + nickname + " :No such nick\r\n")
 #define ERR_NOSUCHNICKCHAN(server, client, nickname)(":" + server + " 401 " + client + " " + nickname + " :No such nick/channel\r\n")
@@ -59,14 +59,13 @@
 #define ERR_NOTONCHANNEL(client, channel)			(": 442 " + client + " " + channel + " :You're not on that channel\r\n")
 #define ERR_NOTREGISTERED()							(": 451 :You have not registered\r\n")
 #define ERR_NEEDMOREPARAMS(client, cmd)				(": 461 " + client + " " + cmd + " :Not enough parameters\r\n")
-#define ERR_ALREADYREGISTRED(client)				(": 462 " + client + " ::Unauthorized command (already registered)\r\n")
+#define ERR_ALREADYREGISTRED(client)				(": 462 " + client + " :Unauthorized command (already registered)\r\n")
 #define ERR_PASSWDMISMATCH(client)					(": 464 " + client + " :Password incorrect\r\n")
-#define ERR_KEYSET(channel)							(": 467 " + channel + " :Channel key already set\r\n")
+// #define ERR_KEYSET(channel)							(": 467 " + channel + " :Channel key already set\r\n")
 #define ERR_CHANNELISFULL(client, channel)			(": 471 " + client + " " + channel + " :Cannot join channel (+l)\r\n")
 #define ERR_UNKNOWNMODE(client, mode)				(": 472 " + client + " " + mode + " :is unknown mode char to me\r\n")
 #define ERR_INVITEONLYCHAN(client, channel)			(": 473 " + client + " " + channel + " :Cannot join channel (+i)\r\n")
 #define ERR_BADCHANNELKEY(client, channel)			(": 475 " + client + " " + channel + " :Cannot join channel (+k)\r\n")
-#define ERR_NOCHANMODES(channel)					(": 477 " + channel + " :Channel doesn't support modes\r\n")
 #define ERR_CHANOPRIVSNEEDED(client, channel)		(": 482 " + client + " " + channel + " :You're not channel operator\r\n")
 
 #endif

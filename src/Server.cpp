@@ -24,19 +24,16 @@ Server::~Server() {
 	for (ChannelMap::iterator it = _channels.begin(); it != _channels.end(); it++) {
 		delete it->second;
 	}
-	for (UserMap::iterator it = _users.begin(); it != _users.end(); it++) {
+	for (UserFdMap::iterator it = _usersfd.begin(); it != _usersfd.end(); it++) {
 		delete it->second;
 	}
-	
-	if (_sockfd != -1) {
+	if (_sockfd != -1)
 		close(_sockfd);
-	}
 }
 
 void	handleSIGINT(int) {throw std::runtime_error("\nServer shutting down...");}
 
 void	Server::init(std::string port) {
-
 	signal(SIGINT, handleSIGINT); // On gère le signal SIGINT (Ctrl+C)
 
 	// Creation du socket du server
@@ -139,7 +136,11 @@ Channel	*Server::getChannel(std::string &name) {
 User	*Server::getUser(std::string &name) {
 	UserMap::iterator it = _users.find(name);
 	if (it != _users.end())
+	{
+		if (!it->second->getRegistrationState())
+			return NULL;		
 		return it->second;
+	}
 	return NULL;
 }
 

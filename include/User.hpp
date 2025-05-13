@@ -12,22 +12,22 @@ class Channel;
 class Server;
 
 typedef std::map<std::string, Channel *>	ChannelMap;
-typedef enum {PASS, NICK, USER, REGISTER} RegistrationState;
+typedef enum {FALSE, TRUE, UNSET} PassState;
 
 class User {
 protected:
-	std::string			_username;
-	std::string 		_nickname;
-	std::string 		_buffer;
-	bool 				_saveBuffer;
-	sockaddr_in 		_addr;
-    int         		_sockfd;
-	bool				_passValid;
-	bool				_userValid;
-	bool				_nickValid;
-	RegistrationState	_registrationState;
-
-	ChannelMap	_channels;
+	std::string		_username;
+	std::string 	_nickname;
+	std::string 	_buffer;
+	bool 			_saveBuffer;
+	sockaddr_in 	_addr;
+    int         	_sockfd;
+	bool			_userValid;
+	bool			_nickValid;
+	bool			_register;
+	PassState		_passValid;
+			
+	ChannelMap		_channels;
 
 	User();
 public:
@@ -61,6 +61,7 @@ public:
 	std::string		getNickname() const;
 	sockaddr_in		getAddr() const;
 	int				getSockfd() const;
+	bool			getRegistrationState() const;
 };
 
 #endif
