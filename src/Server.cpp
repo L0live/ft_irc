@@ -7,7 +7,7 @@ Server::Server(std::string port, std::string password) : _password(password), _t
 
 Server::Server(const Server &src) {*this = src;}
 
-Server  &Server::operator=(const Server &src) { // A revoir, copy profonde ?
+Server  &Server::operator=(const Server &src) {
 	if (this == &src) {
 		return *this;
 	}
