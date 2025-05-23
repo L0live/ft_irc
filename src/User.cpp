@@ -49,7 +49,7 @@ void	User::sendRequest(std::string msg) {
 void User::interpretRequest(Server &server) {
 	if (_buffer.empty())
 		_buffer = "QUIT :Leaving with ctrl+C\r\n";
-	if (_saveBuffer)
+	else if (_saveBuffer)
 		return ;
 	static Server::CommandMap commands = server.init_commands();
 	std::istringstream request(_buffer);
