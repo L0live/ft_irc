@@ -64,7 +64,7 @@ void User::interpretRequest(Server &server) {
 			try {
 				if (it == commands.end())
 					throw std::runtime_error(ERR_UNKNOWNCOMMAND(client, token));
-				if (!_register && token != "PASS" && token != "NICK" && token != "USER")
+				if (!_register && token != "PASS" && token != "NICK" && token != "USER" && token != "QUIT")
 					throw std::runtime_error(ERR_NOTREGISTERED());
 				(this->*(it->second))(requestLine, client, server);
 			} catch(const std::exception& e) {
@@ -393,6 +393,8 @@ bool User::checkName(std::string name) {
 void User::checkRegister(std::string &client, Server &server)
 {
 	(void) client;
+	if (server.getPassword().empty())
+		_passValid = TRUE;	
 	if (!_register && _nickValid && _userValid && !_passValid && !server.getPassword().empty())
 		throw std::runtime_error(ERR_PASSWDMISMATCH(_nickname));
 	if(!_register && _passValid == TRUE && _userValid && _nickValid) {

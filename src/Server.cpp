@@ -54,7 +54,14 @@ void	Server::init(std::string port) {
 	getaddrinfo("localhost", NULL, &hints, &res); // on prend les infos de notre host en local
 
 	_addr = *(sockaddr_in *)res->ai_addr;
-	_addr.sin_port = htons(atoi(port.c_str())); // la c notre port
+	for (size_t i = 0; i < port.size(); ++i) {
+        if (!std::isdigit(port[i]))
+			throw	std::runtime_error("Error: invalid port");
+    }
+	int	portNb = atoi(port.c_str());
+	if(port.size() > 5 || portNb > 65535 || portNb <= 0)
+		throw	std::runtime_error("Error: invalid port");
+	_addr.sin_port = htons(portNb); // la c notre port
 
 	freeaddrinfo(res);
 	if (bind(_sockfd, (struct sockaddr *)&_addr, sizeof(_addr)) == -1) // on relie le socket du server a notre host
