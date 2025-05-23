@@ -77,9 +77,15 @@ void Bot::interpretRequest(std::istringstream &request) {
     else if (token == "433") {
         _nickname += "_";
         sendRequest("NICK " + _nickname + "\r\n");
-    } else if (token == "001") {
+    } else if (token == "001")
         std::cout << "Bot successfully register." << std::endl;
-    } else {
+    else if (token == "341") {
+		request >> token;
+		request >> token;
+		request >> token;
+   		sendRequest("JOIN " + token + "\r\n");
+	}
+	else {
         sendMsg(request, token);
     }
 }
@@ -88,10 +94,17 @@ void Bot::sendMsg(std::istringstream &request, std::string &client) { // TODO: a
     std::string token;
     std::string msg;
     request >> token; // PRVMSG
-    request >> token; // target (WE)
+    if (token != "PRIVMSG")
+		return ;
+	request >> token; // target (WE)
+	if (token[0] == '#')
+		client = token;
     request >> token;
     if (token[0] == ':')
         token.erase(token.begin());
     do { msg += token + " "; } while (request >> token);
-    sendRequest("PRIVMSG " + client.substr(1, client.find('!') - 1) + " :" + msg + "\r\n");
+	if (client[0] == '#')
+		sendRequest("PRIVMSG " + client + " :" + msg + "\r\n");
+	else
+    	sendRequest("PRIVMSG " + client.substr(1, client.find('!') - 1) + " :" + msg + "\r\n");
 }

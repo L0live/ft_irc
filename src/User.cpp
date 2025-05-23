@@ -48,7 +48,7 @@ void	User::sendRequest(std::string msg) {
 
 void User::interpretRequest(Server &server) {
 	if (_buffer.empty())
-		server.toLeave();
+		_buffer = "QUIT :Leaving with ctrl+C\r\n";
 	if (_saveBuffer)
 		return ;
 	static Server::CommandMap commands = server.init_commands();
@@ -159,11 +159,9 @@ void User::joinChannel(std::istringstream &request, std::string &client, Server 
 
 void User::leaveChannel(std::istringstream &request, std::string &client, Server &server) {
 	std::string	channelName;
-	request >> channelName; // Error gerer par Hexchat
 
 	if (!(request >> channelName))
-		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "LEAVE"));
-
+		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "PART"));
 
 	Channel *channel = server.getChannel(channelName);
 	if (channel == NULL) // Error: no such channel
@@ -222,7 +220,6 @@ void	User::invite(std::istringstream &request, std::string &client, Server &serv
 	std::string targetName;
 	if (!(request >> targetName))
 		throw	std::runtime_error(ERR_NEEDMOREPARAMS(client, "INVITE"));
-	
 	
 	User *target = server.getUser(targetName);
 	if (!target) // Error: target not found
